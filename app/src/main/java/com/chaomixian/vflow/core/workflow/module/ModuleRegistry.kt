@@ -81,6 +81,7 @@ object ModuleRegistry {
         register(SmsTriggerModule(), context)
         register(CallTriggerModule(), context)
         register(NotificationTriggerModule(), context)
+        register(GlobalVariableTriggerModule(), context)
         register(ElementTriggerModule(), context)
         register(GKDTriggerModule(), context)
         register(LocationTriggerModule(), context)
@@ -168,6 +169,8 @@ object ModuleRegistry {
         // 应用与系统
         register(DelayModule(), context)
         register(InputModule(), context)
+        register(DialogAlertModule(), context)
+        register(ListSelectionModule(), context)
         register(SpeechToTextModule(), context)
         register(QuickViewModule(), context)
         register(ToastModule(), context)
@@ -201,6 +204,7 @@ object ModuleRegistry {
         register(CallPhoneModule(), context)
         register(DarkModeModule(), context)
         register(DoNotDisturbModule(), context)
+        register(VibrationModeModule(), context)
         register(VibrationModule(), context)
         register(FlashlightModule(), context)
 

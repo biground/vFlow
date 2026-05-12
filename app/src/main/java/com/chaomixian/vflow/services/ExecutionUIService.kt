@@ -195,6 +195,25 @@ class ExecutionUIService(private val context: Context) {
         return startActivityAndAwaitResult(intent, title, "点击这里输入 $type").await()
     }
 
+    suspend fun requestDialogAlert(title: String, message: String, buttons: List<String>): Int? {
+        val intent = Intent(context, OverlayUIActivity::class.java).apply {
+            putExtra("request_type", "dialog_alert")
+            putExtra("title", title)
+            putExtra("message", message)
+            putStringArrayListExtra("choices", ArrayList(buttons))
+        }
+        return startActivityAndAwaitResult(intent, title, message.ifBlank { buttons.joinToString(" / ") }).await() as? Int
+    }
+
+    suspend fun requestListSelection(title: String, items: List<String>): Int? {
+        val intent = Intent(context, OverlayUIActivity::class.java).apply {
+            putExtra("request_type", "list_selection")
+            putExtra("title", title)
+            putStringArrayListExtra("choices", ArrayList(items))
+        }
+        return startActivityAndAwaitResult(intent, title, items.joinToString(", ").take(80)).await() as? Int
+    }
+
     suspend fun requestSpeechToText(
         request: SpeechToTextOverlayRequest
     ): SpeechToTextResult? {

@@ -40,6 +40,7 @@ object TriggerHandlerRegistry {
         register(SmsTriggerModule().id) { SmsTriggerHandler() }
         register(CallTriggerModule().id) { CallTriggerHandler() }
         register(NotificationTriggerModule().id) { NotificationTriggerHandler() }
+        register(GlobalVariableTriggerModule().id) { GlobalVariableTriggerHandler() }
         register(ElementTriggerModule().id) { ElementTriggerHandler() }
         register(GKDTriggerModule().id) { GKDTriggerHandler() }
         register(LocationTriggerModule().id) { LocationTriggerHandler() }

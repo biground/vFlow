@@ -380,6 +380,33 @@
     <string name="option_vflow_data_input_type_time">时间</string>
     <string name="option_vflow_data_input_type_date">日期</string>
 
+    <!-- vflow.device.dialog_alert -->
+    <string name="module_vflow_device_dialog_alert_name">弹窗提醒</string>
+    <string name="module_vflow_device_dialog_alert_desc">显示带自定义按钮的弹窗，并返回用户选择的按钮。</string>
+    <string name="param_vflow_device_dialog_alert_title_name">标题</string>
+    <string name="param_vflow_device_dialog_alert_message_name">内容</string>
+    <string name="param_vflow_device_dialog_alert_buttons_name">按钮</string>
+    <string name="output_vflow_device_dialog_alert_selected_index_name">选择按钮索引</string>
+    <string name="output_vflow_device_dialog_alert_selected_text_name">选择按钮文本</string>
+    <string name="summary_vflow_device_dialog_alert_prefix">弹窗提醒: </string>
+    <string name="msg_vflow_device_dialog_alert_waiting">等待用户选择按钮...</string>
+
+    <!-- vflow.device.list_selection -->
+    <string name="module_vflow_device_list_selection_name">列表选择</string>
+    <string name="module_vflow_device_list_selection_desc">显示列表让用户选择一项，并返回选中的列表项。</string>
+    <string name="param_vflow_device_list_selection_title_name">标题</string>
+    <string name="param_vflow_device_list_selection_items_name">列表项</string>
+    <string name="output_vflow_device_list_selection_selected_index_name">选择项索引</string>
+    <string name="output_vflow_device_list_selection_selected_text_name">选择项文本</string>
+    <string name="summary_vflow_device_list_selection_prefix">列表选择: </string>
+    <string name="msg_vflow_device_list_selection_waiting">等待用户选择列表项...</string>
+    <string name="error_vflow_device_user_choice_service_missing">服务缺失</string>
+    <string name="error_vflow_device_user_choice_service_missing_desc">无法获取 UI 服务来请求用户选择。</string>
+    <string name="error_vflow_device_user_choice_empty_options">选项为空</string>
+    <string name="error_vflow_device_user_choice_empty_options_desc">请至少配置一个按钮或列表项。</string>
+    <string name="error_vflow_device_user_choice_cancelled">用户取消</string>
+    <string name="error_vflow_device_user_choice_cancelled_desc">用户取消了选择操作。</string>
+
     <!-- vflow.device.speech_to_text -->
     <string name="module_vflow_device_speech_to_text_name">语音转文字</string>
     <string name="module_vflow_device_speech_to_text_desc">弹出按住说话的悬浮输入界面，实时将语音转成文本。</string>
@@ -750,6 +777,16 @@
     <string name="summary_vflow_trigger_notification_any">任意</string>
     <string name="summary_vflow_trigger_notification_suffix"> 的通知时</string>
     <string name="msg_vflow_trigger_notification_received">通知已收到</string>
+
+    <!-- vflow.trigger.global_variable -->
+    <string name="module_vflow_trigger_global_variable_name">全局变量变更</string>
+    <string name="module_vflow_trigger_global_variable_desc">当指定全局变量发生变化时触发工作流。</string>
+    <string name="param_vflow_trigger_global_variable_variable_name_name">全局变量名</string>
+    <string name="output_vflow_trigger_global_variable_variable_name_name">变量名</string>
+    <string name="output_vflow_trigger_global_variable_old_value_name">旧值</string>
+    <string name="output_vflow_trigger_global_variable_new_value_name">新值</string>
+    <string name="summary_vflow_trigger_global_variable_prefix">全局变量变更:</string>
+    <string name="msg_vflow_trigger_global_variable_triggered">全局变量变更触发器已触发</string>
 
     <!-- vflow.trigger.element -->
     <string name="module_vflow_trigger_element_name">元素触发</string>
@@ -2813,6 +2850,21 @@
     <string name="msg_vflow_system_do_not_disturb_completed">免打扰模式设置完成</string>
     <string name="msg_vflow_system_do_not_disturb_rule_enabled">vFlow 自动勿扰规则已开启</string>
     <string name="msg_vflow_system_do_not_disturb_rule_disabled">vFlow 自动勿扰规则已关闭</string>
+
+    <!-- vflow.system.vibration_mode -->
+    <string name="module_vflow_system_vibration_mode_name">振动模式</string>
+    <string name="module_vflow_system_vibration_mode_desc">开启、关闭或切换系统振动模式。</string>
+    <string name="param_vflow_system_vibration_mode_action_name">操作</string>
+    <string name="output_vflow_system_vibration_mode_success_name">是否成功</string>
+    <string name="output_vflow_system_vibration_mode_enabled_name">振动模式已开启</string>
+    <string name="option_vflow_system_vibration_mode_toggle">切换</string>
+    <string name="option_vflow_system_vibration_mode_on">开启</string>
+    <string name="option_vflow_system_vibration_mode_off">关闭</string>
+    <string name="error_vflow_system_vibration_mode_permission_denied">无权修改振动模式</string>
+    <string name="error_vflow_system_vibration_mode_failed">设置振动模式失败</string>
+    <string name="error_vflow_system_vibration_mode_unknown">发生未知错误</string>
+    <string name="msg_vflow_system_vibration_mode_setting">正在%1$s振动模式...</string>
+    <string name="msg_vflow_system_vibration_mode_completed">振动模式设置完成</string>
 
     <!-- vflow.device.vibration -->
     <string name="module_vflow_device_vibration_name">振动</string>

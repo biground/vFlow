@@ -21,6 +21,8 @@ import android.view.MotionEvent
 import android.view.WindowManager
 import android.widget.EditText
 import android.widget.ImageView
+import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.lifecycle.lifecycleScope
@@ -157,6 +159,15 @@ class OverlayUIActivity : AppCompatActivity() {
                     isDateInputType(inputType) -> showDatePickerDialog(title ?: getString(R.string.overlay_ui_input_date_title))
                     else -> showTextInputDialog(title ?: getString(R.string.overlay_ui_input_text_title), inputType)
                 }
+            }
+            "dialog_alert" -> {
+                val message = intent.getStringExtra("message") ?: ""
+                val choices = intent.getStringArrayListExtra("choices").orEmpty()
+                showDialogAlert(title ?: getString(R.string.module_vflow_device_dialog_alert_name), message, choices)
+            }
+            "list_selection" -> {
+                val choices = intent.getStringArrayListExtra("choices").orEmpty()
+                showListSelectionDialog(title ?: getString(R.string.module_vflow_device_list_selection_name), choices)
             }
             SpeechToTextOverlayContract.REQUEST_TYPE -> handleSpeechToTextRequest(title)
             "pick_image" -> {
@@ -686,6 +697,73 @@ class OverlayUIActivity : AppCompatActivity() {
                 val inputText = editText.text.toString()
                 val result: Any? = if (isNumberInputType(type)) inputText.toDoubleOrNull() else inputText
                 complete(result)
+            }
+            .setNegativeButton(R.string.common_cancel) { _, _ -> cancel() }
+            .setOnCancelListener { cancel() }
+            .show()
+    }
+
+    private fun showDialogAlert(title: String, message: String, choices: List<String>) {
+        if (choices.isEmpty()) {
+            cancel()
+            return
+        }
+
+        val padding = (24 * resources.displayMetrics.density).toInt()
+        val gap = (8 * resources.displayMetrics.density).toInt()
+        val contentLayout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(padding, 0, padding, 0)
+        }
+
+        if (message.isNotBlank()) {
+            contentLayout.addView(TextView(this).apply {
+                text = message
+                textSize = 16f
+                setPadding(0, 0, 0, gap)
+            })
+        }
+
+        val dialog = MaterialAlertDialogBuilder(this)
+            .setTitle(title)
+            .setView(ScrollView(this).apply { addView(contentLayout) })
+            .setNegativeButton(R.string.common_cancel) { _, _ -> cancel() }
+            .setOnCancelListener { cancel() }
+            .show()
+
+        choices.forEachIndexed { index, label ->
+            val button = MaterialButton(this).apply {
+                text = label
+                isAllCaps = false
+                setOnClickListener {
+                    dialog.setOnCancelListener(null)
+                    dialog.dismiss()
+                    complete(index)
+                }
+            }
+            contentLayout.addView(
+                button,
+                LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply {
+                    topMargin = gap
+                }
+            )
+        }
+    }
+
+    private fun showListSelectionDialog(title: String, choices: List<String>) {
+        if (choices.isEmpty()) {
+            cancel()
+            return
+        }
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle(title)
+            .setItems(choices.toTypedArray()) { dialog, which ->
+                dialog.dismiss()
+                complete(which)
             }
             .setNegativeButton(R.string.common_cancel) { _, _ -> cancel() }
             .setOnCancelListener { cancel() }

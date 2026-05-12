@@ -625,14 +625,17 @@ internal object ChatAgentSkillRouter {
         definition = ChatAgentSkillDefinition(
             id = "device_feedback",
             title = "Device Feedback",
-            description = "Produce device feedback such as toast, vibration, speech, audio, or calls.",
+            description = "Produce device feedback, ask for a user choice, or change vibration mode, such as toast, dialogs, lists, vibration, speech, audio, or calls.",
             instructions = """
-                Use direct feedback tools for toast, vibration, TTS, speech-to-text, audio playback, and phone calls.
+                Use direct feedback tools for toast, user-choice dialogs, list selection, one-shot vibration, vibration mode, TTS, speech-to-text, audio playback, and phone calls.
                 Prefer the direct tool that matches the user's requested output modality.
             """.trimIndent(),
             moduleIds = setOf(
                 "vflow.device.toast",
+                "vflow.device.dialog_alert",
+                "vflow.device.list_selection",
                 "vflow.device.vibration",
+                "vflow.system.vibration_mode",
                 "vflow.device.text_to_speech",
                 "vflow.device.speech_to_text",
                 "vflow.device.play_audio",
@@ -643,6 +646,10 @@ internal object ChatAgentSkillRouter {
             "toast",
             "轻提示",
             "弹个提示",
+            "弹窗",
+            "弹窗提醒",
+            "按钮选择",
+            "列表选择",
             "振动",
             "震动",
             "vibrate",

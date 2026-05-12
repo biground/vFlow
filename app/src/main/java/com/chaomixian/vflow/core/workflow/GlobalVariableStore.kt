@@ -6,14 +6,23 @@ import com.chaomixian.vflow.core.types.VObject
 import com.chaomixian.vflow.core.types.VObjectFactory
 import com.chaomixian.vflow.core.types.basic.VBoolean
 import com.chaomixian.vflow.core.types.basic.VNumber
+import com.chaomixian.vflow.core.types.basic.VNull
 import com.chaomixian.vflow.core.types.basic.VString
 import com.google.gson.Gson
+import java.util.concurrent.CopyOnWriteArrayList
+
+data class GlobalVariableChangeEvent(
+    val variableName: String,
+    val oldValue: VObject,
+    val newValue: VObject
+)
 
 object GlobalVariableStore {
     private const val PREFS_NAME = "global_variable_store"
     private const val KEY_VARIABLES_JSON = "variables_json"
 
     private val gson = Gson()
+    private val changeListeners = CopyOnWriteArrayList<(GlobalVariableChangeEvent) -> Unit>()
 
     private data class StoredVariable(
         val name: String,
@@ -37,19 +46,43 @@ object GlobalVariableStore {
 
     fun put(context: Context, key: String, value: Any?) {
         val current = getAll(context).toMutableMap()
-        current[key] = VObjectFactory.from(value)
+        val oldValue = current[key] ?: VNull
+        val newValue = VObjectFactory.from(value)
+        if (valueSignature(oldValue) == valueSignature(newValue)) {
+            return
+        }
+        current[key] = newValue
         save(context, current)
+        notifyChanged(GlobalVariableChangeEvent(key, oldValue, newValue))
     }
 
     fun remove(context: Context, key: String) {
         val current = getAll(context).toMutableMap()
-        if (current.remove(key) != null) {
+        val oldValue = current.remove(key)
+        if (oldValue != null) {
             save(context, current)
+            notifyChanged(GlobalVariableChangeEvent(key, oldValue, VNull))
         }
     }
 
     fun replaceAll(context: Context, values: Map<String, VObject>) {
+        val oldValues = getAll(context)
         save(context, values)
+        val changedKeys = oldValues.keys + values.keys
+        changedKeys.forEach { key ->
+            val oldValue = oldValues[key] ?: VNull
+            val newValue = values[key] ?: VNull
+            if (valueSignature(oldValue) != valueSignature(newValue)) {
+                notifyChanged(GlobalVariableChangeEvent(key, oldValue, newValue))
+            }
+        }
+    }
+
+    fun addChangeListener(listener: (GlobalVariableChangeEvent) -> Unit): AutoCloseable {
+        changeListeners += listener
+        return AutoCloseable {
+            changeListeners -= listener
+        }
     }
 
     private fun save(context: Context, values: Map<String, VObject>) {
@@ -82,6 +115,16 @@ object GlobalVariableStore {
             }
             else -> VString(item.value?.toString() ?: "")
         }
+    }
+
+    private fun notifyChanged(event: GlobalVariableChangeEvent) {
+        changeListeners.forEach { listener ->
+            runCatching { listener(event) }
+        }
+    }
+
+    private fun valueSignature(value: VObject): String {
+        return "${value.type.id}:${value.asString()}"
     }
 
     private fun prefs(context: Context) =

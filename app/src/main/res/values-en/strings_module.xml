@@ -380,6 +380,33 @@
     <string name="option_vflow_data_input_type_time">Time</string>
     <string name="option_vflow_data_input_type_date">Date</string>
 
+    <!-- vflow.device.dialog_alert -->
+    <string name="module_vflow_device_dialog_alert_name">Dialog Alert</string>
+    <string name="module_vflow_device_dialog_alert_desc">Show a dialog with custom buttons and return the selected button.</string>
+    <string name="param_vflow_device_dialog_alert_title_name">Title</string>
+    <string name="param_vflow_device_dialog_alert_message_name">Message</string>
+    <string name="param_vflow_device_dialog_alert_buttons_name">Buttons</string>
+    <string name="output_vflow_device_dialog_alert_selected_index_name">Selected Button Index</string>
+    <string name="output_vflow_device_dialog_alert_selected_text_name">Selected Button Text</string>
+    <string name="summary_vflow_device_dialog_alert_prefix">Dialog Alert: </string>
+    <string name="msg_vflow_device_dialog_alert_waiting">Waiting for button selection...</string>
+
+    <!-- vflow.device.list_selection -->
+    <string name="module_vflow_device_list_selection_name">List Selection</string>
+    <string name="module_vflow_device_list_selection_desc">Show a list and return the selected item.</string>
+    <string name="param_vflow_device_list_selection_title_name">Title</string>
+    <string name="param_vflow_device_list_selection_items_name">Items</string>
+    <string name="output_vflow_device_list_selection_selected_index_name">Selected Item Index</string>
+    <string name="output_vflow_device_list_selection_selected_text_name">Selected Item Text</string>
+    <string name="summary_vflow_device_list_selection_prefix">List Selection: </string>
+    <string name="msg_vflow_device_list_selection_waiting">Waiting for list selection...</string>
+    <string name="error_vflow_device_user_choice_service_missing">Service missing</string>
+    <string name="error_vflow_device_user_choice_service_missing_desc">Unable to get UI service to request a user choice.</string>
+    <string name="error_vflow_device_user_choice_empty_options">No options</string>
+    <string name="error_vflow_device_user_choice_empty_options_desc">Configure at least one button or list item.</string>
+    <string name="error_vflow_device_user_choice_cancelled">User cancelled</string>
+    <string name="error_vflow_device_user_choice_cancelled_desc">The user cancelled the selection.</string>
+
     <!-- vflow.device.speech_to_text -->
     <string name="module_vflow_device_speech_to_text_name">Speech to Text</string>
     <string name="module_vflow_device_speech_to_text_desc">Show a hold-to-talk overlay and transcribe speech to text in real time.</string>
@@ -750,6 +777,16 @@
     <string name="summary_vflow_trigger_notification_any">any</string>
     <string name="summary_vflow_trigger_notification_suffix"> notification</string>
     <string name="msg_vflow_trigger_notification_received">Notification received</string>
+
+    <!-- vflow.trigger.global_variable -->
+    <string name="module_vflow_trigger_global_variable_name">Global Variable Changed</string>
+    <string name="module_vflow_trigger_global_variable_desc">Triggers the workflow when the specified global variable changes.</string>
+    <string name="param_vflow_trigger_global_variable_variable_name_name">Global Variable Name</string>
+    <string name="output_vflow_trigger_global_variable_variable_name_name">Variable Name</string>
+    <string name="output_vflow_trigger_global_variable_old_value_name">Old Value</string>
+    <string name="output_vflow_trigger_global_variable_new_value_name">New Value</string>
+    <string name="summary_vflow_trigger_global_variable_prefix">Global variable changed:</string>
+    <string name="msg_vflow_trigger_global_variable_triggered">Global variable trigger fired</string>
 
     <!-- vflow.trigger.element -->
     <string name="module_vflow_trigger_element_name">Element Trigger</string>
@@ -2813,6 +2850,21 @@
     <string name="msg_vflow_system_do_not_disturb_completed">Do Not Disturb updated</string>
     <string name="msg_vflow_system_do_not_disturb_rule_enabled">vFlow automatic Do Not Disturb rule enabled</string>
     <string name="msg_vflow_system_do_not_disturb_rule_disabled">vFlow automatic Do Not Disturb rule disabled</string>
+
+    <!-- vflow.system.vibration_mode -->
+    <string name="module_vflow_system_vibration_mode_name">Vibration Mode</string>
+    <string name="module_vflow_system_vibration_mode_desc">Turn Android ringer vibration mode on, off, or toggle it.</string>
+    <string name="param_vflow_system_vibration_mode_action_name">Action</string>
+    <string name="output_vflow_system_vibration_mode_success_name">Success</string>
+    <string name="output_vflow_system_vibration_mode_enabled_name">Vibration Mode Enabled</string>
+    <string name="option_vflow_system_vibration_mode_toggle">Toggle</string>
+    <string name="option_vflow_system_vibration_mode_on">On</string>
+    <string name="option_vflow_system_vibration_mode_off">Off</string>
+    <string name="error_vflow_system_vibration_mode_permission_denied">No permission to change vibration mode</string>
+    <string name="error_vflow_system_vibration_mode_failed">Failed to set vibration mode</string>
+    <string name="error_vflow_system_vibration_mode_unknown">Unknown error occurred</string>
+    <string name="msg_vflow_system_vibration_mode_setting">Setting vibration mode: %1$s...</string>
+    <string name="msg_vflow_system_vibration_mode_completed">Vibration mode updated</string>
 
     <!-- vflow.device.vibration -->
     <string name="module_vflow_device_vibration_name">Vibration</string>
