@@ -212,6 +212,8 @@ object ModuleRegistry {
         // 网络控制组
         register(CoreBluetoothModule(), context)           // 蓝牙控制（开启/关闭/切换）
         register(CoreBluetoothStateModule(), context)      // 读取蓝牙状态
+        register(CoreBluetoothDeviceConnectedModule(), context) // 检查指定蓝牙设备连接
+        register(CoreBluetoothSwitchDeviceModule(), context) // 尝试连接/切换指定蓝牙设备
         register(CoreWifiModule(), context)                // WiFi控制（开启/关闭/切换）
         register(CoreWifiStateModule(), context)           // 读取WiFi状态
         register(CoreHotspotModule(), context)             // 热点控制（开启/关闭/切换）

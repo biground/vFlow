@@ -98,6 +98,15 @@ object VFlowCoreBridge {
         val error: String? = null
     )
 
+    data class BluetoothDeviceResult(
+        val success: Boolean,
+        val connected: Boolean,
+        val deviceName: String,
+        val deviceAddress: String,
+        val profiles: List<String>,
+        val error: String? = null
+    )
+
     data class ShellExecResult(
         val output: String,
         val exitCode: Int,
@@ -838,6 +847,44 @@ object VFlowCoreBridge {
             .put("method", "toggle")
         val res = sendRaw(req)
         return res?.optBoolean("enabled", false) ?: false
+    }
+
+    fun isBluetoothDeviceConnected(device: String): BluetoothDeviceResult {
+        val req = JSONObject()
+            .put("target", "bluetooth_manager")
+            .put("method", "isDeviceConnected")
+            .put("params", JSONObject().put("device", device))
+        return parseBluetoothDeviceResult(sendRaw(req))
+    }
+
+    fun connectBluetoothDevice(device: String, disconnectOthers: Boolean): BluetoothDeviceResult {
+        val req = JSONObject()
+            .put("target", "bluetooth_manager")
+            .put("method", "connectDevice")
+            .put("params", JSONObject()
+                .put("device", device)
+                .put("disconnectOthers", disconnectOthers))
+        return parseBluetoothDeviceResult(sendRaw(req))
+    }
+
+    private fun parseBluetoothDeviceResult(res: JSONObject?): BluetoothDeviceResult {
+        val profilesJson = res?.optJSONArray("profiles")
+        val profiles = if (profilesJson != null) {
+            (0 until profilesJson.length()).mapNotNull { index ->
+                profilesJson.optString(index).takeIf { it.isNotBlank() }
+            }
+        } else {
+            emptyList()
+        }
+
+        return BluetoothDeviceResult(
+            success = res?.optBoolean("success", false) ?: false,
+            connected = res?.optBoolean("connected", false) ?: false,
+            deviceName = res?.optString("deviceName", "") ?: "",
+            deviceAddress = res?.optString("deviceAddress", "") ?: "",
+            profiles = profiles,
+            error = res?.optString("error")?.takeIf { it.isNotBlank() }
+        )
     }
 
     // NFC Management APIs

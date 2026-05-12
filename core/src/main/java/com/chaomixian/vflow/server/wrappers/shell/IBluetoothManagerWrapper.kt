@@ -1,18 +1,56 @@
-// 文件: server/src/main/java/com/chaomixian/vflow/server/wrappers/IBluetoothManagerWrapper.kt
 package com.chaomixian.vflow.server.wrappers.shell
 
+import android.annotation.SuppressLint
+import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothDevice
+import android.bluetooth.BluetoothManager
+import android.bluetooth.BluetoothProfile
+import android.content.Context
+import com.chaomixian.vflow.server.common.FakeContext
 import com.chaomixian.vflow.server.wrappers.ServiceWrapper
 import com.chaomixian.vflow.server.common.utils.ReflectionUtils
 import com.chaomixian.vflow.server.common.Logger
+import org.json.JSONArray
 import org.json.JSONObject
 import java.lang.reflect.Method
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
+@SuppressLint("MissingPermission")
 class IBluetoothManagerWrapper : ServiceWrapper("bluetooth_manager", "android.bluetooth.IBluetoothManager\$Stub") {
 
     private var enableMethod: Method? = null
     private var disableMethod: Method? = null
     private var isEnabledMethod: Method? = null
     private var getStateMethod: Method? = null
+
+    private data class BluetoothDeviceLookup(
+        val device: BluetoothDevice?,
+        val error: String? = null
+    )
+
+    private data class ProfileSpec(
+        val name: String,
+        val id: Int
+    )
+
+    private data class ProfileProxy(
+        val spec: ProfileSpec,
+        val proxy: BluetoothProfile
+    )
+
+    private data class ConnectionSnapshot(
+        val connected: Boolean,
+        val profiles: List<String>
+    )
+
+    private data class DeviceConnectResult(
+        val success: Boolean,
+        val connected: Boolean,
+        val device: BluetoothDevice?,
+        val profiles: List<String>,
+        val error: String? = null
+    )
 
     override fun onServiceConnected(service: Any) {
         val clazz = service.javaClass
@@ -70,6 +108,34 @@ class IBluetoothManagerWrapper : ServiceWrapper("bluetooth_manager", "android.bl
                 val success = setBluetoothEnabled(newState)
                 result.put("success", success)
                 result.put("enabled", newState) // 返回新状态
+            }
+            "isDeviceConnected" -> {
+                val deviceId = params.optString("device", "")
+                val lookup = findBondedDevice(deviceId)
+                val device = lookup.device
+                if (device == null) {
+                    result.put("success", false)
+                    result.put("connected", false)
+                    result.put("error", lookup.error ?: "Bluetooth device not found")
+                } else {
+                    val snapshot = getConnectionSnapshot(device)
+                    result.put("success", true)
+                    result.put("connected", snapshot.connected)
+                    result.put("deviceName", device.name ?: "")
+                    result.put("deviceAddress", device.address ?: "")
+                    result.put("profiles", JSONArray(snapshot.profiles))
+                }
+            }
+            "connectDevice" -> {
+                val deviceId = params.optString("device", "")
+                val disconnectOthers = params.optBoolean("disconnectOthers", true)
+                val connectResult = connectDevice(deviceId, disconnectOthers)
+                result.put("success", connectResult.success)
+                result.put("connected", connectResult.connected)
+                result.put("deviceName", connectResult.device?.name ?: "")
+                result.put("deviceAddress", connectResult.device?.address ?: "")
+                result.put("profiles", JSONArray(connectResult.profiles))
+                connectResult.error?.let { result.put("error", it) }
             }
             else -> {
                 result.put("success", false)
@@ -212,6 +278,329 @@ class IBluetoothManagerWrapper : ServiceWrapper("bluetooth_manager", "android.bl
         } catch (e: Exception) {
             null
         }
+    }
+
+    private fun getBluetoothAdapter(): BluetoothAdapter? {
+        return try {
+            val manager = FakeContext.get().getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
+            manager?.adapter ?: BluetoothAdapter.getDefaultAdapter()
+        } catch (e: Exception) {
+            Logger.error("BluetoothManager", "Failed to get BluetoothAdapter: ${e.message}", e)
+            null
+        }
+    }
+
+    private fun isBluetoothCurrentlyEnabled(): Boolean {
+        return try {
+            getBluetoothAdapter()?.isEnabled == true || isEnabled()
+        } catch (_: Exception) {
+            isEnabled()
+        }
+    }
+
+    private fun findBondedDevice(identifier: String): BluetoothDeviceLookup {
+        val normalizedIdentifier = identifier.trim()
+        if (normalizedIdentifier.isBlank()) {
+            return BluetoothDeviceLookup(null, "Device name or address is empty")
+        }
+
+        val adapter = getBluetoothAdapter()
+            ?: return BluetoothDeviceLookup(null, "Bluetooth adapter is not available")
+
+        if (!isBluetoothCurrentlyEnabled()) {
+            return BluetoothDeviceLookup(null, "Bluetooth is disabled")
+        }
+
+        val bondedDevices = try {
+            adapter.bondedDevices.orEmpty()
+        } catch (e: Exception) {
+            Logger.error("BluetoothManager", "Failed to read bonded devices: ${e.message}", e)
+            return BluetoothDeviceLookup(null, e.message ?: "Failed to read bonded devices")
+        }
+
+        if (bondedDevices.isEmpty()) {
+            return BluetoothDeviceLookup(null, "No paired Bluetooth devices")
+        }
+
+        val byAddress = bondedDevices.firstOrNull {
+            it.address.equals(normalizedIdentifier, ignoreCase = true)
+        }
+        if (byAddress != null) return BluetoothDeviceLookup(byAddress)
+
+        val byExactName = bondedDevices.firstOrNull {
+            it.name.equals(normalizedIdentifier, ignoreCase = true)
+        }
+        if (byExactName != null) return BluetoothDeviceLookup(byExactName)
+
+        val byPartialName = bondedDevices.firstOrNull {
+            it.name?.contains(normalizedIdentifier, ignoreCase = true) == true
+        }
+        if (byPartialName != null) return BluetoothDeviceLookup(byPartialName)
+
+        return BluetoothDeviceLookup(null, "Paired Bluetooth device not found: $normalizedIdentifier")
+    }
+
+    private fun connectDevice(identifier: String, disconnectOthers: Boolean): DeviceConnectResult {
+        if (!isBluetoothCurrentlyEnabled()) {
+            val enabled = setBluetoothEnabled(true)
+            if (!enabled) {
+                return DeviceConnectResult(
+                    success = false,
+                    connected = false,
+                    device = null,
+                    profiles = emptyList(),
+                    error = "Failed to enable Bluetooth"
+                )
+            }
+            waitForBluetoothEnabled()
+        }
+
+        val lookup = findBondedDevice(identifier)
+        val device = lookup.device ?: return DeviceConnectResult(
+            success = false,
+            connected = false,
+            device = null,
+            profiles = emptyList(),
+            error = lookup.error ?: "Bluetooth device not found"
+        )
+
+        val before = getConnectionSnapshot(device)
+        if (before.connected) {
+            setActiveDevice(device)
+            return DeviceConnectResult(
+                success = true,
+                connected = true,
+                device = device,
+                profiles = before.profiles
+            )
+        }
+
+        val proxies = acquireProfileProxies()
+        if (proxies.isEmpty()) {
+            return DeviceConnectResult(
+                success = false,
+                connected = false,
+                device = device,
+                profiles = emptyList(),
+                error = "No Bluetooth profile proxy is available"
+            )
+        }
+
+        var invokedConnect = false
+        var supportedProfile = false
+        var lastError: String? = null
+
+        try {
+            proxies.forEach { profileProxy ->
+                if (disconnectOthers) {
+                    disconnectOtherDevices(profileProxy, device)
+                }
+
+                val connectMethod = findDeviceMethod(profileProxy.proxy, "connect")
+                if (connectMethod == null) {
+                    Logger.debug("BluetoothManager", "${profileProxy.spec.name} has no connect(BluetoothDevice) method")
+                    return@forEach
+                }
+
+                supportedProfile = true
+                try {
+                    val rawResult = connectMethod.invoke(profileProxy.proxy, device)
+                    invokedConnect = when (rawResult) {
+                        is Boolean -> invokedConnect || rawResult
+                        else -> true
+                    }
+                    Logger.info("BluetoothManager", "Invoked ${profileProxy.spec.name}.connect for ${device.address}, result=$rawResult")
+                } catch (e: Exception) {
+                    lastError = e.message
+                    Logger.error("BluetoothManager", "${profileProxy.spec.name}.connect failed: ${e.message}", e)
+                }
+            }
+        } finally {
+            proxies.forEach { closeProfileProxy(it) }
+        }
+
+        repeat(8) {
+            Thread.sleep(750)
+            val snapshot = getConnectionSnapshot(device)
+            if (snapshot.connected) {
+                setActiveDevice(device)
+                return DeviceConnectResult(
+                    success = true,
+                    connected = true,
+                    device = device,
+                    profiles = snapshot.profiles
+                )
+            }
+        }
+
+        val after = getConnectionSnapshot(device)
+        return DeviceConnectResult(
+            success = invokedConnect && after.connected,
+            connected = after.connected,
+            device = device,
+            profiles = after.profiles,
+            error = when {
+                after.connected -> null
+                !supportedProfile -> "No connectable Bluetooth profile is available for this device"
+                lastError != null -> lastError
+                else -> "Bluetooth connection request was sent but the device did not connect"
+            }
+        )
+    }
+
+    private fun waitForBluetoothEnabled() {
+        repeat(10) {
+            if (isBluetoothCurrentlyEnabled()) return
+            Thread.sleep(500)
+        }
+    }
+
+    private fun getConnectionSnapshot(device: BluetoothDevice): ConnectionSnapshot {
+        val profiles = mutableListOf<String>()
+
+        if (isDeviceConnectedByHiddenApi(device)) {
+            profiles.add("device")
+        }
+
+        val proxies = acquireProfileProxies()
+        try {
+            proxies.forEach { profileProxy ->
+                if (getConnectedDevices(profileProxy.proxy).any { it.address == device.address }) {
+                    profiles.add(profileProxy.spec.name)
+                }
+            }
+        } finally {
+            proxies.forEach { closeProfileProxy(it) }
+        }
+
+        return ConnectionSnapshot(
+            connected = profiles.isNotEmpty(),
+            profiles = profiles.distinct()
+        )
+    }
+
+    private fun isDeviceConnectedByHiddenApi(device: BluetoothDevice): Boolean {
+        return try {
+            val method = device.javaClass.getMethod("isConnected")
+            method.invoke(device) as? Boolean ?: false
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    private fun acquireProfileProxies(timeoutMs: Long = 1500L): List<ProfileProxy> {
+        val adapter = getBluetoothAdapter() ?: return emptyList()
+        val context = FakeContext.get()
+        val specs = bluetoothProfileSpecs()
+        val proxies = mutableListOf<ProfileProxy>()
+
+        specs.forEach { spec ->
+            val latch = CountDownLatch(1)
+            var proxy: BluetoothProfile? = null
+            val listener = object : BluetoothProfile.ServiceListener {
+                override fun onServiceConnected(profile: Int, serviceProxy: BluetoothProfile) {
+                    proxy = serviceProxy
+                    latch.countDown()
+                }
+
+                override fun onServiceDisconnected(profile: Int) {
+                    if (profile == spec.id) proxy = null
+                }
+            }
+
+            try {
+                val requested = adapter.getProfileProxy(context, listener, spec.id)
+                if (requested && latch.await(timeoutMs, TimeUnit.MILLISECONDS)) {
+                    proxy?.let { proxies.add(ProfileProxy(spec, it)) }
+                }
+            } catch (e: Exception) {
+                Logger.error("BluetoothManager", "Failed to acquire ${spec.name} proxy: ${e.message}", e)
+            }
+        }
+
+        return proxies
+    }
+
+    private fun bluetoothProfileSpecs(): List<ProfileSpec> {
+        val specs = mutableListOf(
+            ProfileSpec("headset", BluetoothProfile.HEADSET),
+            ProfileSpec("a2dp", BluetoothProfile.A2DP)
+        )
+
+        runCatching {
+            val hearingAid = BluetoothProfile::class.java.getField("HEARING_AID").getInt(null)
+            specs.add(ProfileSpec("hearing_aid", hearingAid))
+        }
+        runCatching {
+            val leAudio = BluetoothProfile::class.java.getField("LE_AUDIO").getInt(null)
+            specs.add(ProfileSpec("le_audio", leAudio))
+        }
+
+        return specs
+    }
+
+    private fun closeProfileProxy(profileProxy: ProfileProxy) {
+        try {
+            getBluetoothAdapter()?.closeProfileProxy(profileProxy.spec.id, profileProxy.proxy)
+        } catch (e: Exception) {
+            Logger.error("BluetoothManager", "Failed to close ${profileProxy.spec.name} proxy: ${e.message}", e)
+        }
+    }
+
+    private fun getConnectedDevices(proxy: BluetoothProfile): List<BluetoothDevice> {
+        return try {
+            proxy.connectedDevices.orEmpty()
+        } catch (e: Exception) {
+            Logger.error("BluetoothManager", "Failed to read connected devices: ${e.message}", e)
+            emptyList()
+        }
+    }
+
+    private fun disconnectOtherDevices(profileProxy: ProfileProxy, target: BluetoothDevice) {
+        val disconnectMethod = findDeviceMethod(profileProxy.proxy, "disconnect") ?: return
+        getConnectedDevices(profileProxy.proxy)
+            .filter { it.address != target.address }
+            .forEach { device ->
+                runCatching {
+                    disconnectMethod.invoke(profileProxy.proxy, device)
+                    Logger.info("BluetoothManager", "Disconnected ${device.address} from ${profileProxy.spec.name}")
+                }.onFailure {
+                    Logger.error("BluetoothManager", "Failed to disconnect ${device.address}: ${it.message}", it)
+                }
+            }
+    }
+
+    private fun setActiveDevice(device: BluetoothDevice) {
+        val proxies = acquireProfileProxies()
+        try {
+            proxies.forEach { profileProxy ->
+                val method = findDeviceMethod(profileProxy.proxy, "setActiveDevice") ?: return@forEach
+                runCatching {
+                    method.invoke(profileProxy.proxy, device)
+                    Logger.info("BluetoothManager", "Set active device ${device.address} for ${profileProxy.spec.name}")
+                }.onFailure {
+                    Logger.error("BluetoothManager", "Failed to set active device for ${profileProxy.spec.name}: ${it.message}", it)
+                }
+            }
+        } finally {
+            proxies.forEach { closeProfileProxy(it) }
+        }
+    }
+
+    private fun findDeviceMethod(target: Any, name: String): Method? {
+        val methods = buildList {
+            addAll(target.javaClass.methods)
+            var clazz: Class<*>? = target.javaClass
+            while (clazz != null) {
+                addAll(clazz.declaredMethods)
+                clazz = clazz.superclass
+            }
+        }
+        return methods.firstOrNull { method ->
+            method.name == name &&
+                method.parameterTypes.size == 1 &&
+                method.parameterTypes[0] == BluetoothDevice::class.java
+        }?.apply { isAccessible = true }
     }
 
     /**
