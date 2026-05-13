@@ -2,6 +2,7 @@ package com.chaomixian.vflow.core.workflow.module.system
 
 import android.app.AutomaticZenRule
 import android.app.NotificationManager
+import android.content.ComponentName
 import android.content.Context
 import android.net.Uri
 import android.os.Build
@@ -23,6 +24,7 @@ import com.chaomixian.vflow.core.types.VTypeRegistry
 import com.chaomixian.vflow.core.types.basic.VBoolean
 import com.chaomixian.vflow.core.workflow.model.ActionStep
 import com.chaomixian.vflow.permissions.PermissionManager
+import com.chaomixian.vflow.ui.main.MainActivity
 import com.chaomixian.vflow.ui.workflow_editor.PillUtil
 
 class DoNotDisturbModule : BaseModule() {
@@ -224,18 +226,39 @@ class DoNotDisturbModule : BaseModule() {
             return existingRuleId
         }
 
-        val rule = AutomaticZenRule(
-            context.getString(R.string.module_vflow_system_do_not_disturb_name),
-            null,
-            conditionId(context),
-            NotificationManager.INTERRUPTION_FILTER_NONE,
-            true
-        )
+        val rule = createAutomaticZenRule(context)
         val ruleId = notificationManager.addAutomaticZenRule(rule)
         if (ruleId != null) {
             prefs.edit().putString(PREF_RULE_ID, ruleId).apply()
         }
         return ruleId
+    }
+
+    internal fun createAutomaticZenRule(context: Context): AutomaticZenRule {
+        return createAutomaticZenRule(
+            context.getString(R.string.module_vflow_system_do_not_disturb_name),
+            context.packageName
+        )
+    }
+
+    internal fun createAutomaticZenRule(ruleName: String, packageName: String): AutomaticZenRule {
+        return AutomaticZenRule(
+            ruleName,
+            null,
+            createRuleConfigurationActivity(packageName),
+            conditionId(packageName),
+            null,
+            NotificationManager.INTERRUPTION_FILTER_NONE,
+            true
+        )
+    }
+
+    internal fun createRuleConfigurationActivity(packageName: String): ComponentName {
+        return ComponentName(packageName, ruleConfigurationActivityClassName())
+    }
+
+    internal fun ruleConfigurationActivityClassName(): String {
+        return MainActivity::class.java.name
     }
 
     private fun getRuleState(notificationManager: NotificationManager, ruleId: String): Int {
@@ -249,10 +272,14 @@ class DoNotDisturbModule : BaseModule() {
     }
 
     private fun conditionId(context: Context): Uri {
+        return conditionId(context.packageName)
+    }
+
+    private fun conditionId(packageName: String): Uri {
         return Uri.Builder()
             .scheme(CONDITION_SCHEME)
             .authority(CONDITION_HOST)
-            .appendPath(context.packageName)
+            .appendPath(packageName)
             .build()
     }
 

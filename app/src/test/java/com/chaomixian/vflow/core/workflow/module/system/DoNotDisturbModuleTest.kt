@@ -1,7 +1,8 @@
 package com.chaomixian.vflow.core.workflow.module.system
 
-import android.service.notification.Condition
 import android.app.NotificationManager
+import android.service.notification.Condition
+import com.chaomixian.vflow.ui.main.MainActivity
 import com.chaomixian.vflow.core.module.ParameterType
 import com.chaomixian.vflow.permissions.PermissionManager
 import org.junit.Assert.assertEquals
@@ -99,6 +100,14 @@ class DoNotDisturbModuleTest {
                 NotificationManager.INTERRUPTION_FILTER_NONE,
                 DoNotDisturbModule.ACTION_TOGGLE
             )
+        )
+    }
+
+    @Test
+    fun `automatic zen rule configuration activity opens main activity`() {
+        assertEquals(
+            MainActivity::class.java.name,
+            module.ruleConfigurationActivityClassName()
         )
     }
 }

@@ -96,6 +96,10 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="um.69e62d246f259537c79bda50" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="android.app.action.AUTOMATIC_ZEN_RULE" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
         </activity>
 
         <activity
