@@ -21,6 +21,7 @@ import com.chaomixian.vflow.core.module.ModuleRegistry
 import com.chaomixian.vflow.core.workflow.WorkflowManager
 import com.chaomixian.vflow.core.workflow.TriggerExecutionCoordinator
 import com.chaomixian.vflow.core.workflow.WorkflowPermissionRecovery
+import com.chaomixian.vflow.core.workflow.GlobalVariableStore
 import com.chaomixian.vflow.core.workflow.model.TriggerSpec
 import com.chaomixian.vflow.core.workflow.model.Workflow
 import com.chaomixian.vflow.core.workflow.module.scripted.ModuleManager
@@ -49,6 +50,7 @@ class TriggerService : Service() {
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     // Core 守护任务
     private var coreWatcherJob: Job? = null
+    private var globalVariableNotificationListener: AutoCloseable? = null
     private val workflowChangeMutex = Mutex()
 
 
@@ -97,6 +99,7 @@ class TriggerService : Service() {
 
         // 启动 Core 状态监控与保活处理
         startCoreWatcher()
+        registerBackgroundNotificationVariableRefresh()
 
         // 在服务创建时（如开机后）检查并应用启动设置
         checkAndApplyStartupSettings()
@@ -346,6 +349,8 @@ class TriggerService : Service() {
         super.onDestroy()
         // 停止 Core 守护任务
         coreWatcherJob?.cancel()
+        globalVariableNotificationListener?.close()
+        globalVariableNotificationListener = null
         triggerHandlers.values.forEach { it.stop(this) }
         // 服务销毁时，取消协程作用域
         serviceScope.cancel()
@@ -439,11 +444,36 @@ class TriggerService : Service() {
             )
             getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
         }
-        return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle(getString(R.string.trigger_service_notification_title))
-            .setContentText(getString(R.string.trigger_service_notification_text))
+        val notificationSettings = BackgroundServiceNotificationPreferences.readResolved(this)
+        val largeIcon = BackgroundServiceNotificationPreferences.loadLargeIcon(this)
+        val builder = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle(notificationSettings.title)
+            .setContentText(notificationSettings.text)
             .setSmallIcon(R.drawable.ic_workflows)
-            .build()
+
+        if (largeIcon != null) {
+            builder.setLargeIcon(largeIcon)
+        }
+
+        return builder.build()
+    }
+
+    private fun registerBackgroundNotificationVariableRefresh() {
+        globalVariableNotificationListener = GlobalVariableStore.addChangeListener {
+            serviceScope.launch {
+                updateBackgroundNotificationIfVisible()
+            }
+        }
+    }
+
+    private fun updateBackgroundNotificationIfVisible() {
+        val prefs = getSharedPreferences("vFlowPrefs", Context.MODE_PRIVATE)
+        if (!prefs.getBoolean("backgroundServiceNotificationEnabled", true)) {
+            return
+        }
+
+        val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        manager.notify(NOTIFICATION_ID, createNotification())
     }
 
     override fun onBind(intent: Intent?): IBinder? = null

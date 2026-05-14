@@ -10,6 +10,7 @@ import com.chaomixian.vflow.core.logging.DebugLogger
 import com.chaomixian.vflow.core.telemetry.TelemetryManager
 import com.chaomixian.vflow.data.update.UpdateChecker
 import com.chaomixian.vflow.data.update.UpdateInfo
+import com.chaomixian.vflow.services.BackgroundServiceNotificationPreferences
 import com.chaomixian.vflow.services.ShellManager
 import com.chaomixian.vflow.ui.common.AppearanceManager
 import com.chaomixian.vflow.ui.common.OverlayUiPreferences
@@ -30,6 +31,9 @@ data class SettingsUiState(
     val appScale: Float = AppearanceManager.DEFAULT_APP_SCALE,
     val progressNotificationEnabled: Boolean = true,
     val backgroundServiceNotificationEnabled: Boolean = true,
+    val backgroundServiceNotificationTitle: String = "",
+    val backgroundServiceNotificationText: String = "",
+    val backgroundServiceNotificationIconPath: String? = null,
     val forceKeepAliveEnabled: Boolean = false,
     val autoEnableAccessibility: Boolean = false,
     val enableTypeFilter: Boolean = false,
@@ -53,6 +57,7 @@ class SettingsViewModel : ViewModel() {
     fun refresh(context: Context, refreshUpdateInfo: Boolean = false) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val autoCheckUpdatesEnabled = prefs.getBoolean(KEY_AUTO_CHECK_UPDATES_ENABLED, true)
+        val backgroundNotificationSettings = BackgroundServiceNotificationPreferences.read(context)
         _uiState.update {
             it.copy(
                 updateInfo = if (autoCheckUpdatesEnabled) it.updateInfo else null,
@@ -72,6 +77,9 @@ class SettingsViewModel : ViewModel() {
                     KEY_BACKGROUND_SERVICE_NOTIFICATION_ENABLED,
                     true
                 ),
+                backgroundServiceNotificationTitle = backgroundNotificationSettings.title,
+                backgroundServiceNotificationText = backgroundNotificationSettings.text,
+                backgroundServiceNotificationIconPath = backgroundNotificationSettings.iconPath,
                 forceKeepAliveEnabled = prefs.getBoolean(KEY_FORCE_KEEP_ALIVE_ENABLED, false),
                 autoEnableAccessibility = prefs.getBoolean(KEY_AUTO_ENABLE_ACCESSIBILITY, false),
                 enableTypeFilter = prefs.getBoolean(KEY_ENABLE_TYPE_FILTER, false),
@@ -145,6 +153,43 @@ class SettingsViewModel : ViewModel() {
     ) = editPref(context) {
         putBoolean(KEY_BACKGROUND_SERVICE_NOTIFICATION_ENABLED, enabled)
         _uiState.update { it.copy(backgroundServiceNotificationEnabled = enabled) }
+    }
+
+    fun setBackgroundServiceNotificationContent(
+        context: Context,
+        title: String,
+        text: String
+    ) {
+        BackgroundServiceNotificationPreferences.saveText(context, title, text)
+        val settings = BackgroundServiceNotificationPreferences.read(context)
+        _uiState.update {
+            it.copy(
+                backgroundServiceNotificationTitle = settings.title,
+                backgroundServiceNotificationText = settings.text,
+                backgroundServiceNotificationIconPath = settings.iconPath
+            )
+        }
+    }
+
+    fun refreshBackgroundServiceNotificationSettings(context: Context) {
+        val settings = BackgroundServiceNotificationPreferences.read(context)
+        _uiState.update {
+            it.copy(
+                backgroundServiceNotificationTitle = settings.title,
+                backgroundServiceNotificationText = settings.text,
+                backgroundServiceNotificationIconPath = settings.iconPath
+            )
+        }
+    }
+
+    fun clearBackgroundServiceNotificationIcon(context: Context) {
+        BackgroundServiceNotificationPreferences.clearIcon(context)
+        refreshBackgroundServiceNotificationSettings(context)
+    }
+
+    fun resetBackgroundServiceNotificationCustomization(context: Context) {
+        BackgroundServiceNotificationPreferences.reset(context)
+        refreshBackgroundServiceNotificationSettings(context)
     }
 
     fun setForceKeepAliveEnabled(context: Context, enabled: Boolean) = editPref(context) {

@@ -30,6 +30,7 @@ import com.chaomixian.vflow.core.logging.DebugLogger
 import com.chaomixian.vflow.core.workflow.WorkflowManager
 import com.chaomixian.vflow.permissions.PermissionActivity
 import com.chaomixian.vflow.permissions.PermissionManager
+import com.chaomixian.vflow.services.BackgroundServiceNotificationPreferences
 import com.chaomixian.vflow.services.ShellDiagnostic
 import com.chaomixian.vflow.services.ShellManager
 import com.chaomixian.vflow.services.TriggerService
@@ -76,6 +77,27 @@ fun SettingsRoute(
                     context.toast(
                         context.getString(R.string.settings_toast_export_failed, error.message)
                     )
+                }
+            }
+        }
+    val backgroundNotificationIconLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+            val selectedUri = uri ?: return@rememberLauncherForActivityResult
+            activity.lifecycleScope.launch {
+                val saved = withContext(Dispatchers.IO) {
+                    runCatching {
+                        BackgroundServiceNotificationPreferences.saveIconFromUri(
+                            appContext,
+                            selectedUri
+                        )
+                    }
+                }
+                if (saved.isSuccess) {
+                    settingsViewModel.refreshBackgroundServiceNotificationSettings(context)
+                    requestTriggerServiceNotificationUpdate(context)
+                    context.toast(R.string.settings_background_notification_icon_selected)
+                } else {
+                    context.toast(R.string.settings_background_notification_icon_failed)
                 }
             }
         }
@@ -180,11 +202,25 @@ fun SettingsRoute(
             },
             onSetBackgroundServiceNotificationEnabled = { enabled ->
                 settingsViewModel.setBackgroundServiceNotificationEnabled(context, enabled)
-                context.startService(
-                    Intent(context, TriggerService::class.java).apply {
-                        action = TriggerService.ACTION_UPDATE_NOTIFICATION
-                    }
-                )
+                requestTriggerServiceNotificationUpdate(context)
+            },
+            onSaveBackgroundServiceNotificationCustomization = { title, text ->
+                settingsViewModel.setBackgroundServiceNotificationContent(context, title, text)
+                requestTriggerServiceNotificationUpdate(context)
+                context.toast(R.string.settings_background_notification_saved)
+            },
+            onSelectBackgroundServiceNotificationIcon = {
+                backgroundNotificationIconLauncher.launch("image/*")
+            },
+            onClearBackgroundServiceNotificationIcon = {
+                settingsViewModel.clearBackgroundServiceNotificationIcon(context)
+                requestTriggerServiceNotificationUpdate(context)
+                context.toast(R.string.settings_background_notification_icon_removed)
+            },
+            onResetBackgroundServiceNotificationCustomization = {
+                settingsViewModel.resetBackgroundServiceNotificationCustomization(context)
+                requestTriggerServiceNotificationUpdate(context)
+                context.toast(R.string.settings_background_notification_reset)
             },
             onSetForceKeepAliveEnabled = { enabled ->
                 settingsViewModel.setForceKeepAliveEnabled(context, enabled)
@@ -349,6 +385,14 @@ fun SettingsRoute(
                 context.toast(R.string.settings_toast_accessibility_disguise_changed)
             }
         )
+    )
+}
+
+private fun requestTriggerServiceNotificationUpdate(context: android.content.Context) {
+    context.startService(
+        Intent(context, TriggerService::class.java).apply {
+            action = TriggerService.ACTION_UPDATE_NOTIFICATION
+        }
     )
 }
 

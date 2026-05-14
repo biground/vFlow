@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.BlurOn
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Notifications
@@ -46,6 +47,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
@@ -94,6 +96,10 @@ data class SettingsScreenActions(
     val onOpenApiSettings: () -> Unit,
     val onSetProgressNotificationEnabled: (Boolean) -> Unit,
     val onSetBackgroundServiceNotificationEnabled: (Boolean) -> Unit,
+    val onSaveBackgroundServiceNotificationCustomization: (String, String) -> Unit,
+    val onSelectBackgroundServiceNotificationIcon: () -> Unit,
+    val onClearBackgroundServiceNotificationIcon: () -> Unit,
+    val onResetBackgroundServiceNotificationCustomization: () -> Unit,
     val onSetForceKeepAliveEnabled: (Boolean) -> Unit,
     val onSetAutoEnableAccessibility: (Boolean) -> Unit,
     val onSetEnableTypeFilter: (Boolean) -> Unit,
@@ -136,6 +142,7 @@ fun SettingsScreen(
     modifier: Modifier = Modifier
 ) {
     var searchQuery by rememberSaveable { mutableStateOf("") }
+    var showBackgroundNotificationDialog by rememberSaveable { mutableStateOf(false) }
     val normalizedQuery = remember(searchQuery) { normalizeSearchQuery(searchQuery) }
     val focusManager = LocalFocusManager.current
 
@@ -196,6 +203,13 @@ fun SettingsScreen(
     val backgroundServiceTitle = stringResource(R.string.settings_switch_background_service)
     val backgroundServiceSubtitle = stringResource(R.string.settings_switch_background_service_summary)
     val backgroundServiceInfo = stringResource(R.string.settings_switch_background_service_desc)
+    val backgroundNotificationCustomizeTitle =
+        stringResource(R.string.settings_background_notification_customize)
+    val backgroundNotificationCustomizeSubtitle =
+        stringResource(
+            R.string.settings_background_notification_customize_summary,
+            uiState.backgroundServiceNotificationTitle
+        )
     val forceKeepAliveTitle = stringResource(R.string.settings_switch_force_keep_alive)
     val forceKeepAliveSubtitle = stringResource(R.string.settings_switch_force_keep_alive_summary)
     val forceKeepAliveInfo = stringResource(R.string.settings_switch_force_keep_alive_desc)
@@ -271,6 +285,8 @@ fun SettingsScreen(
         apiSettingsTitle, apiSettingsSubtitle, apiStatusValue,
         progressNotificationTitle, progressNotificationSubtitle,
         backgroundServiceTitle, backgroundServiceSubtitle, backgroundServiceInfo,
+        backgroundNotificationCustomizeTitle, backgroundNotificationCustomizeSubtitle,
+        uiState.backgroundServiceNotificationTitle, uiState.backgroundServiceNotificationText,
         forceKeepAliveTitle, forceKeepAliveSubtitle, forceKeepAliveInfo,
         autoAccessibilityTitle, autoAccessibilitySubtitle, autoAccessibilityInfo,
         typeFilterTitle, typeFilterSubtitle, typeFilterInfo,
@@ -486,6 +502,20 @@ fun SettingsScreen(
                     onCheckedChange = actions.onSetBackgroundServiceNotificationEnabled,
                     infoText = backgroundServiceInfo
                 )
+                NativeEntryRow(
+                    title = backgroundNotificationCustomizeTitle,
+                    subtitle = backgroundNotificationCustomizeSubtitle,
+                    value = if (uiState.backgroundServiceNotificationIconPath != null) {
+                        stringResource(R.string.settings_background_notification_icon_selected_short)
+                    } else {
+                        null
+                    },
+                    icon = Icons.Default.Image,
+                    tone = accentTone(),
+                    position = SettingsGroupPosition.Middle,
+                    enabled = uiState.backgroundServiceNotificationEnabled,
+                    onClick = { showBackgroundNotificationDialog = true }
+                )
                 NativeSwitchRow(
                     title = forceKeepAliveTitle,
                     subtitle = forceKeepAliveSubtitle,
@@ -654,6 +684,101 @@ fun SettingsScreen(
             }
         }
     }
+
+    if (showBackgroundNotificationDialog) {
+        BackgroundServiceNotificationDialog(
+            initialTitle = uiState.backgroundServiceNotificationTitle,
+            initialText = uiState.backgroundServiceNotificationText,
+            hasIcon = uiState.backgroundServiceNotificationIconPath != null,
+            onDismiss = { showBackgroundNotificationDialog = false },
+            onSave = { title, text ->
+                actions.onSaveBackgroundServiceNotificationCustomization(title, text)
+                showBackgroundNotificationDialog = false
+            },
+            onSelectIcon = actions.onSelectBackgroundServiceNotificationIcon,
+            onClearIcon = actions.onClearBackgroundServiceNotificationIcon,
+            onReset = {
+                actions.onResetBackgroundServiceNotificationCustomization()
+                showBackgroundNotificationDialog = false
+            }
+        )
+    }
+}
+
+@Composable
+private fun BackgroundServiceNotificationDialog(
+    initialTitle: String,
+    initialText: String,
+    hasIcon: Boolean,
+    onDismiss: () -> Unit,
+    onSave: (String, String) -> Unit,
+    onSelectIcon: () -> Unit,
+    onClearIcon: () -> Unit,
+    onReset: () -> Unit
+) {
+    var title by rememberSaveable(initialTitle) { mutableStateOf(initialTitle) }
+    var text by rememberSaveable(initialText) { mutableStateOf(initialText) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(text = stringResource(R.string.settings_background_notification_customize)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(
+                    modifier = Modifier.fillMaxWidth(),
+                    value = title,
+                    onValueChange = { title = it },
+                    label = {
+                        Text(text = stringResource(R.string.settings_background_notification_title_label))
+                    },
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    modifier = Modifier.fillMaxWidth(),
+                    value = text,
+                    onValueChange = { text = it },
+                    label = {
+                        Text(text = stringResource(R.string.settings_background_notification_text_label))
+                    },
+                    minLines = 2,
+                    maxLines = 3
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    FilledTonalButton(
+                        modifier = Modifier.weight(1f),
+                        onClick = onSelectIcon,
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Text(text = stringResource(R.string.settings_background_notification_select_icon))
+                    }
+                    FilledTonalButton(
+                        modifier = Modifier.weight(1f),
+                        onClick = onClearIcon,
+                        enabled = hasIcon,
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Text(text = stringResource(R.string.settings_background_notification_remove_icon))
+                    }
+                }
+                TextButton(onClick = onReset) {
+                    Text(text = stringResource(R.string.settings_background_notification_reset_defaults))
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onSave(title, text) }) {
+                Text(text = stringResource(R.string.common_save))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(text = stringResource(android.R.string.cancel))
+            }
+        }
+    )
 }
 
 @Composable
