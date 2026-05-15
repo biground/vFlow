@@ -23,6 +23,7 @@ debug-signing.properties
 # Claude Code settings
 .claude/
 .codex/
+.worktrees/
 
 # Release builds and modules
 /release/
