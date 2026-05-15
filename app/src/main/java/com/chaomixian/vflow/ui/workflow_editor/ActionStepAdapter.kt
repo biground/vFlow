@@ -48,6 +48,7 @@ class ActionStepAdapter(
     private val onEditClick: (position: Int, inputId: String?) -> Unit,
     private val onDeleteClick: (position: Int) -> Unit,
     private val onDuplicateClick: (position: Int) -> Unit,
+    private val onExecuteFromStepClick: (position: Int) -> Unit,
     private val onToggleEnabledClick: (position: Int) -> Unit,
     private val onRestoreBlockClick: (position: Int) -> Unit,
     private val onInsertBelowClick: (position: Int) -> Unit,
@@ -319,7 +320,11 @@ class ActionStepAdapter(
             val inflater = LayoutInflater.from(itemView.context)
             triggerSteps.forEachIndexed { index, step ->
                 val module = ModuleRegistry.getModule(step.moduleId) ?: return@forEachIndexed
-                val rawSummary = module.getSummary(itemView.context, step)
+                val rawSummary = TriggerConstraintUiFormatter.appendCountToSummary(
+                    summary = module.getSummary(itemView.context, step),
+                    count = step.constraints.size,
+                    countText = { itemView.context.getString(R.string.trigger_constraints_summary_count, it) }
+                )
                 val embeddedCard = inflater.inflate(R.layout.item_action_step, triggerContainer, false)
                 bindEmbeddedStepCard(
                     cardView = embeddedCard,
@@ -434,6 +439,7 @@ class ActionStepAdapter(
         ) {
             val popupView = LayoutInflater.from(context).inflate(R.layout.popup_step_actions, null, false)
             val toggleEnabledButton: ImageButton = popupView.findViewById(R.id.button_toggle_step_enabled)
+            val executeFromHereButton: ImageButton = popupView.findViewById(R.id.button_execute_from_here_action)
             val restoreButton: ImageButton = popupView.findViewById(R.id.button_restore_block_action)
             val insertBelowButton: ImageButton = popupView.findViewById(R.id.button_insert_below_action)
             val duplicateButton: ImageButton = popupView.findViewById(R.id.button_duplicate_action)
@@ -460,6 +466,13 @@ class ActionStepAdapter(
             toggleEnabledButton.contentDescription = context.getString(
                 if (isEffectivelyDisabled) R.string.desc_enable_action else R.string.desc_disable_action
             )
+
+            tintPopupButton(
+                button = executeFromHereButton,
+                backgroundColor = primaryContainer,
+                iconColor = onPrimaryContainer
+            )
+            executeFromHereButton.contentDescription = context.getString(R.string.desc_execute_from_here_action)
 
             tintPopupButton(
                 button = restoreButton,
@@ -508,6 +521,12 @@ class ActionStepAdapter(
                 if (bindingAdapterPosition != RecyclerView.NO_POSITION) {
                     popupWindow.dismiss()
                     onToggleEnabledClick(actualPosition)
+                }
+            }
+            executeFromHereButton.setOnClickListener {
+                if (bindingAdapterPosition != RecyclerView.NO_POSITION) {
+                    popupWindow.dismiss()
+                    onExecuteFromStepClick(actualPosition)
                 }
             }
             restoreButton.setOnClickListener {

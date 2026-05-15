@@ -46,6 +46,16 @@
                 app:tint="?attr/colorOnPrimaryContainer" />
 
             <ImageButton
+                android:id="@+id/button_execute_from_here_action"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/bg_step_popup_action_button"
+                android:contentDescription="@string/desc_execute_from_here_action"
+                android:src="@drawable/rounded_play_arrow_24"
+                app:tint="?attr/colorOnPrimaryContainer" />
+
+            <ImageButton
                 android:id="@+id/button_insert_below_action"
                 android:layout_width="40dp"
                 android:layout_height="40dp"

@@ -132,7 +132,9 @@ object WorkflowExecutor {
         workflow: Workflow,
         context: Context,
         triggerData: Parcelable? = null,
-        triggerStepId: String? = null
+        triggerStepId: String? = null,
+        startStepIndex: Int = 0,
+        endStepIndexExclusive: Int? = null
     ): String {
         when (workflow.reentryBehavior) {
             WorkflowReentryBehavior.BLOCK_NEW -> {
@@ -222,7 +224,13 @@ object WorkflowExecutor {
                         try {
                             withTimeout(maxExecutionTime * 1000L) {
                                 seedTriggerOutputs(workflow, initialContext, triggerStepId)
-                                executeWorkflowInternal(workflow, initialContext, executionInstanceId)
+                                executeWorkflowInternal(
+                                    workflow,
+                                    initialContext,
+                                    executionInstanceId,
+                                    startStepIndex,
+                                    endStepIndexExclusive
+                                )
                             }
                         } catch (e: TimeoutCancellationException) {
                             DebugLogger.e("WorkflowExecutor", "工作流执行超时（最大 ${maxExecutionTime} 秒）")
@@ -244,7 +252,13 @@ object WorkflowExecutor {
                         }
                     } else {
                         seedTriggerOutputs(workflow, initialContext, triggerStepId)
-                        executeWorkflowInternal(workflow, initialContext, executionInstanceId)
+                        executeWorkflowInternal(
+                            workflow,
+                            initialContext,
+                            executionInstanceId,
+                            startStepIndex,
+                            endStepIndexExclusive
+                        )
                     }
 
                     if (!isTimeout) {
@@ -396,15 +410,19 @@ object WorkflowExecutor {
     private suspend fun executeWorkflowInternal(
         workflow: Workflow,
         initialContext: ExecutionContext,
-        executionInstanceId: String
+        executionInstanceId: String,
+        startStepIndex: Int = 0,
+        endStepIndexExclusive: Int? = null
     ): Any? {
         val stepOutputs = initialContext.stepOutputs.toMutableMap()
         val namedVariables = initialContext.namedVariables
         val loopStack = initialContext.loopStack
-        var pc = 0 // 程序计数器
+        val executionStart = startStepIndex.coerceIn(0, workflow.steps.size)
+        val executionEnd = (endStepIndexExclusive ?: workflow.steps.size).coerceIn(executionStart, workflow.steps.size)
+        var pc = executionStart // 程序计数器
         var returnValue: Any? = null // 用于存储子工作流的返回值
 
-        while (pc < workflow.steps.size && coroutineContext.isActive) {
+        while (pc in executionStart until executionEnd && coroutineContext.isActive) {
             val step = workflow.steps[pc]
             val module = ModuleRegistry.getModule(step.moduleId)
             if (module == null) {

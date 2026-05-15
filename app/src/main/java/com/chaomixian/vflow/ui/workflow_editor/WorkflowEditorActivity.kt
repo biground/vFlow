@@ -35,6 +35,8 @@ import androidx.recyclerview.widget.LinearSmoothScroller
 import androidx.recyclerview.widget.RecyclerView
 import com.chaomixian.vflow.R
 import com.chaomixian.vflow.core.execution.ExecutionStateBus
+import com.chaomixian.vflow.core.execution.WorkflowExecutionRange
+import com.chaomixian.vflow.core.execution.WorkflowExecutionRangeResolver
 import com.chaomixian.vflow.core.execution.WorkflowExecutor
 import com.chaomixian.vflow.core.module.*
 import com.chaomixian.vflow.core.types.VTypeRegistry
@@ -95,6 +97,7 @@ class WorkflowEditorActivity : BaseActivity() {
     private var initialWorkflowJson: String? = null
 
     private var pendingExecutionWorkflow: Workflow? = null
+    private var pendingExecutionRange: WorkflowExecutionRange? = null
     private lateinit var executionTracker: WorkflowEditorExecutionTracker
     private lateinit var magicVariableCatalogBuilder: WorkflowEditorMagicVariableCatalogBuilder
 
@@ -128,15 +131,19 @@ class WorkflowEditorActivity : BaseActivity() {
             pendingExecutionWorkflow?.let {
                 executionTracker.beginExecutionTracking(it.id)
                 toast(getString(R.string.editor_toast_execution_start, it.name))
+                val range = pendingExecutionRange
                 val executionInstanceId = WorkflowExecutor.execute(
                     workflow = it,
                     context = this,
-                    triggerStepId = it.manualTrigger()?.id
+                    triggerStepId = it.manualTrigger()?.id,
+                    startStepIndex = range?.startIndex ?: 0,
+                    endStepIndexExclusive = range?.endExclusive
                 )
                 executionTracker.finishExecutionLaunch(executionInstanceId)
             }
         }
         pendingExecutionWorkflow = null
+        pendingExecutionRange = null
     }
 
     // 通用的 Intent Launcher，用于处理 ModuleUIProvider 启动的选择器
@@ -362,7 +369,7 @@ class WorkflowEditorActivity : BaseActivity() {
         return Workflow(
             id = UUID.randomUUID().toString(),
             name = name,
-            triggers = triggerSteps.map { step -> step.copy(parameters = normalizeStepParameters(step.parameters)) },
+            triggers = triggerSteps.map(::normalizeActionStep),
             steps = actionSteps.map { step -> step.copy(parameters = normalizeStepParameters(step.parameters)) },
             cardIconRes = WorkflowVisuals.defaultIconResName(),
             cardThemeColor = WorkflowVisuals.randomThemeColorHex()
@@ -451,7 +458,7 @@ class WorkflowEditorActivity : BaseActivity() {
             step.copy(
                 parameters = deepCopyParameters(step.parameters),
                 indentationLevel = step.indentationLevel
-            )
+            ).withConstraints(copySteps(step.constraints))
         }
     }
 
@@ -471,6 +478,11 @@ class WorkflowEditorActivity : BaseActivity() {
 
     private fun normalizeStepParameters(parameters: Map<String, Any?>): Map<String, Any?> {
         return parameters.mapValues { (_, value) -> normalizeParameterValue(value) }
+    }
+
+    private fun normalizeActionStep(step: ActionStep): ActionStep {
+        return step.copy(parameters = normalizeStepParameters(step.parameters))
+            .withConstraints(step.constraints.map(::normalizeActionStep))
     }
 
     private fun normalizeParameterValue(value: Any?): Any? {
@@ -663,7 +675,7 @@ class WorkflowEditorActivity : BaseActivity() {
     }
 
 
-    private fun executeWorkflow(workflow: Workflow) {
+    private fun executeWorkflow(workflow: Workflow, executionRange: WorkflowExecutionRange? = null) {
         val missingPermissions = PermissionManager.getMissingPermissions(this, workflow)
         if (missingPermissions.isEmpty()) {
             executionTracker.beginExecutionTracking(workflow.id)
@@ -671,11 +683,14 @@ class WorkflowEditorActivity : BaseActivity() {
             val executionInstanceId = WorkflowExecutor.execute(
                 workflow = workflow,
                 context = this,
-                triggerStepId = workflow.manualTrigger()?.id
+                triggerStepId = workflow.manualTrigger()?.id,
+                startStepIndex = executionRange?.startIndex ?: 0,
+                endStepIndexExclusive = executionRange?.endExclusive
             )
             executionTracker.finishExecutionLaunch(executionInstanceId)
         } else {
             pendingExecutionWorkflow = workflow
+            pendingExecutionRange = executionRange
             val intent = Intent(this, PermissionActivity::class.java).apply {
                 putParcelableArrayListExtra(PermissionActivity.EXTRA_PERMISSIONS, ArrayList(missingPermissions))
                 putExtra(PermissionActivity.EXTRA_WORKFLOW_NAME, workflow.name)
@@ -747,13 +762,19 @@ class WorkflowEditorActivity : BaseActivity() {
                 if (focusedInputId != null) {
                     val updatedParams = triggerSteps[position].parameters.toMutableMap()
                     updatedParams.putAll(newStepData.parameters)
-                    triggerSteps[position] = triggerSteps[position].copy(parameters = updatedParams)
+                    triggerSteps[position] = triggerSteps[position]
+                        .copy(parameters = updatedParams)
+                        .withConstraints(newStepData.constraints)
                 } else {
-                    triggerSteps[position] = triggerSteps[position].copy(parameters = newStepData.parameters)
+                    triggerSteps[position] = triggerSteps[position]
+                        .copy(parameters = newStepData.parameters)
+                        .withConstraints(newStepData.constraints)
                 }
             } else {
                 val stepsToAdd = module.createSteps()
-                val configuredFirstStep = stepsToAdd.first().copy(parameters = newStepData.parameters)
+                val configuredFirstStep = stepsToAdd.first()
+                    .copy(parameters = newStepData.parameters)
+                    .withConstraints(newStepData.constraints)
                 triggerSteps.add(configuredFirstStep)
                 if (stepsToAdd.size > 1) {
                     triggerSteps.addAll(stepsToAdd.subList(1, stepsToAdd.size))
@@ -949,6 +970,9 @@ class WorkflowEditorActivity : BaseActivity() {
             onDuplicateClick = { position ->
                 duplicateStepOrBlock(position)
             },
+            onExecuteFromStepClick = { position ->
+                executeWorkflowFromStep(position)
+            },
             onToggleEnabledClick = { position ->
                 toggleStepEnabled(position)
             },
@@ -1000,6 +1024,17 @@ class WorkflowEditorActivity : BaseActivity() {
 
         // 滚动到新复制的位置
         recyclerView.smoothScrollToPosition(insertPosition)
+    }
+
+    private fun executeWorkflowFromStep(position: Int) {
+        if (position !in actionSteps.indices) return
+        if (executionTracker.isCurrentWorkflowExecuting()) {
+            return
+        }
+
+        val workflowToExecute = buildWorkflowForExecution() ?: return
+        val executionRange = WorkflowExecutionRangeResolver.resolveLocalRange(workflowToExecute.steps, position)
+        executeWorkflow(workflowToExecute, executionRange)
     }
 
     private fun toggleStepEnabled(position: Int) {
@@ -1517,7 +1552,9 @@ class WorkflowEditorActivity : BaseActivity() {
         editor.onSave = { newStepData ->
             pushUndoSnapshot()
             val stepsToAdd = module.createSteps()
-            val configuredFirstStep = stepsToAdd.first().copy(parameters = newStepData.parameters)
+            val configuredFirstStep = stepsToAdd.first()
+                .copy(parameters = newStepData.parameters)
+                .withConstraints(newStepData.constraints)
             triggerSteps.add(insertPosition, configuredFirstStep)
             if (stepsToAdd.size > 1) {
                 triggerSteps.addAll(insertPosition + 1, stepsToAdd.subList(1, stepsToAdd.size))
@@ -1621,7 +1658,7 @@ class WorkflowEditorActivity : BaseActivity() {
             val isNewWorkflow = currentWorkflow == null
             val workflowToSave = currentWorkflow?.copy(
                 name = name,
-                triggers = triggerSteps.map { step -> step.copy(parameters = normalizeStepParameters(step.parameters)) },
+                triggers = triggerSteps.map(::normalizeActionStep),
                 steps = actionSteps.map { step -> step.copy(parameters = normalizeStepParameters(step.parameters)) },
                 isEnabled = currentWorkflow?.isEnabled ?: true
             ) ?: createDraftWorkflow(name)
