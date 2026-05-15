@@ -8,6 +8,7 @@
     <string name="category_data">数据处理</string>
     <string name="category_ui">UI控制</string>
     <string name="category_trigger">触发器</string>
+    <string name="category_constraint">约束</string>
     <string name="category_template">模板</string>
     <string name="category_feishu">飞书</string>
     <string name="category_core">Core (Beta)</string>
@@ -386,10 +387,18 @@
     <string name="param_vflow_device_dialog_alert_title_name">标题</string>
     <string name="param_vflow_device_dialog_alert_message_name">内容</string>
     <string name="param_vflow_device_dialog_alert_buttons_name">按钮</string>
+    <string name="param_vflow_device_dialog_alert_enable_timeout_name">启用超时</string>
+    <string name="param_vflow_device_dialog_alert_timeout_seconds_name">超时时间(秒)</string>
+    <string name="param_vflow_device_dialog_alert_timeout_default_index_name">超时默认按钮索引</string>
+    <string name="param_vflow_device_dialog_alert_dismiss_on_touch_outside_name">点击外部可关闭</string>
     <string name="output_vflow_device_dialog_alert_selected_index_name">选择按钮索引</string>
     <string name="output_vflow_device_dialog_alert_selected_text_name">选择按钮文本</string>
     <string name="summary_vflow_device_dialog_alert_prefix">弹窗提醒: </string>
     <string name="msg_vflow_device_dialog_alert_waiting">等待用户选择按钮...</string>
+    <string name="overlay_ui_dialog_alert_timeout_notice">将在 %1$d 秒后自动选择：%2$s</string>
+    <string name="error_vflow_device_dialog_alert_timeout_invalid">超时时间必须大于 0 秒。</string>
+    <string name="error_vflow_device_dialog_alert_timeout_index_invalid">超时默认按钮索引无效。</string>
+    <string name="error_vflow_device_dialog_alert_timeout_index_invalid_desc">请填写按钮范围内的 0 基索引。</string>
 
     <!-- vflow.device.list_selection -->
     <string name="module_vflow_device_list_selection_name">列表选择</string>

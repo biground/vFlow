@@ -195,12 +195,24 @@ class ExecutionUIService(private val context: Context) {
         return startActivityAndAwaitResult(intent, title, "点击这里输入 $type").await()
     }
 
-    suspend fun requestDialogAlert(title: String, message: String, buttons: List<String>): Int? {
+    suspend fun requestDialogAlert(
+        title: String,
+        message: String,
+        buttons: List<String>,
+        timeoutSeconds: Long? = null,
+        timeoutDefaultIndex: Int? = null,
+        dismissOnTouchOutside: Boolean = true
+    ): Int? {
         val intent = Intent(context, OverlayUIActivity::class.java).apply {
             putExtra("request_type", "dialog_alert")
             putExtra("title", title)
             putExtra("message", message)
             putStringArrayListExtra("choices", ArrayList(buttons))
+            putExtra("dismiss_on_touch_outside", dismissOnTouchOutside)
+            if (timeoutSeconds != null && timeoutDefaultIndex != null) {
+                putExtra("timeout_seconds", timeoutSeconds)
+                putExtra("timeout_default_index", timeoutDefaultIndex)
+            }
         }
         return startActivityAndAwaitResult(intent, title, message.ifBlank { buttons.joinToString(" / ") }).await() as? Int
     }

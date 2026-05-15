@@ -58,6 +58,7 @@ import com.google.gson.reflect.TypeToken
 import java.io.File
 import java.util.*
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 class OverlayUIActivity : AppCompatActivity() {
@@ -163,7 +164,21 @@ class OverlayUIActivity : AppCompatActivity() {
             "dialog_alert" -> {
                 val message = intent.getStringExtra("message") ?: ""
                 val choices = intent.getStringArrayListExtra("choices").orEmpty()
-                showDialogAlert(title ?: getString(R.string.module_vflow_device_dialog_alert_name), message, choices)
+                val timeoutSeconds = intent
+                    .takeIf { it.hasExtra("timeout_seconds") }
+                    ?.getLongExtra("timeout_seconds", 0L)
+                val timeoutDefaultIndex = intent
+                    .takeIf { it.hasExtra("timeout_default_index") }
+                    ?.getIntExtra("timeout_default_index", -1)
+                val dismissOnTouchOutside = intent.getBooleanExtra("dismiss_on_touch_outside", true)
+                showDialogAlert(
+                    title ?: getString(R.string.module_vflow_device_dialog_alert_name),
+                    message,
+                    choices,
+                    timeoutSeconds,
+                    timeoutDefaultIndex,
+                    dismissOnTouchOutside
+                )
             }
             "list_selection" -> {
                 val choices = intent.getStringArrayListExtra("choices").orEmpty()
@@ -703,17 +718,32 @@ class OverlayUIActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun showDialogAlert(title: String, message: String, choices: List<String>) {
+    private fun showDialogAlert(
+        title: String,
+        message: String,
+        choices: List<String>,
+        timeoutSeconds: Long? = null,
+        timeoutDefaultIndex: Int? = null,
+        dismissOnTouchOutside: Boolean = true
+    ) {
         if (choices.isEmpty()) {
             cancel()
             return
         }
+        if (timeoutSeconds != null) {
+            val defaultIndex = timeoutDefaultIndex
+            if (defaultIndex == null || defaultIndex !in choices.indices) {
+                cancel()
+                return
+            }
+        }
 
         val padding = (24 * resources.displayMetrics.density).toInt()
+        val bottomPadding = (30 * resources.displayMetrics.density).toInt()
         val gap = (8 * resources.displayMetrics.density).toInt()
         val contentLayout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(padding, 0, padding, 0)
+            setPadding(padding, 0, padding, bottomPadding)
         }
 
         if (message.isNotBlank()) {
@@ -724,21 +754,49 @@ class OverlayUIActivity : AppCompatActivity() {
             })
         }
 
-        val dialog = MaterialAlertDialogBuilder(this)
+        val timeoutNotice = if (timeoutSeconds != null && timeoutDefaultIndex != null) {
+            getString(
+                R.string.overlay_ui_dialog_alert_timeout_notice,
+                timeoutSeconds,
+                choices[timeoutDefaultIndex]
+            )
+        } else {
+            null
+        }
+        if (timeoutNotice != null) {
+            contentLayout.addView(TextView(this).apply {
+                text = timeoutNotice
+                textSize = 14f
+                setPadding(0, 0, 0, gap)
+            })
+        }
+
+        var timeoutJob: Job? = null
+        lateinit var dialog: AlertDialog
+
+        fun completeSelection(index: Int) {
+            timeoutJob?.cancel()
+            dialog.setOnCancelListener(null)
+            dialog.dismiss()
+            complete(index)
+        }
+
+        dialog = MaterialAlertDialogBuilder(this)
             .setTitle(title)
             .setView(ScrollView(this).apply { addView(contentLayout) })
-            .setNegativeButton(R.string.common_cancel) { _, _ -> cancel() }
-            .setOnCancelListener { cancel() }
+            .setOnCancelListener {
+                timeoutJob?.cancel()
+                cancel()
+            }
             .show()
+        dialog.setCanceledOnTouchOutside(dismissOnTouchOutside)
 
         choices.forEachIndexed { index, label ->
             val button = MaterialButton(this).apply {
                 text = label
                 isAllCaps = false
                 setOnClickListener {
-                    dialog.setOnCancelListener(null)
-                    dialog.dismiss()
-                    complete(index)
+                    completeSelection(index)
                 }
             }
             contentLayout.addView(
@@ -750,6 +808,15 @@ class OverlayUIActivity : AppCompatActivity() {
                     topMargin = gap
                 }
             )
+        }
+
+        if (timeoutSeconds != null && timeoutDefaultIndex != null) {
+            timeoutJob = lifecycleScope.launch {
+                delay(timeoutSeconds * 1_000L)
+                if (!isFinishing && dialog.isShowing) {
+                    completeSelection(timeoutDefaultIndex)
+                }
+            }
         }
     }
 

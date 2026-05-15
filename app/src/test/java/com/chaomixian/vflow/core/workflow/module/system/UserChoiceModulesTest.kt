@@ -1,6 +1,7 @@
 package com.chaomixian.vflow.core.workflow.module.system
 
 import com.chaomixian.vflow.core.module.ParameterType
+import com.chaomixian.vflow.core.workflow.model.ActionStep
 import com.chaomixian.vflow.core.types.VTypeRegistry
 import com.chaomixian.vflow.core.types.basic.VList
 import com.chaomixian.vflow.core.types.basic.VNumber
@@ -21,9 +22,33 @@ class UserChoiceModulesTest {
         assertEquals(ParameterType.STRING, inputs["title"]?.staticType)
         assertEquals(ParameterType.STRING, inputs["message"]?.staticType)
         assertEquals(ParameterType.ANY, inputs["buttons"]?.staticType)
+        assertEquals(ParameterType.BOOLEAN, inputs["enableTimeout"]?.staticType)
+        assertEquals(ParameterType.NUMBER, inputs["timeoutSeconds"]?.staticType)
+        assertEquals(ParameterType.NUMBER, inputs["timeoutDefaultIndex"]?.staticType)
+        assertEquals(ParameterType.BOOLEAN, inputs["dismissOnTouchOutside"]?.staticType)
+        assertEquals(true, inputs["dismissOnTouchOutside"]?.defaultValue)
         assertEquals(VTypeRegistry.NUMBER.id, outputs["selectedIndex"]?.typeName)
         assertEquals(VTypeRegistry.STRING.id, outputs["selectedText"]?.typeName)
         assertEquals(listOf(PermissionManager.OVERLAY), module.requiredPermissions)
+    }
+
+    @Test
+    fun `dialog alert rejects timeout default index outside button range`() {
+        val module = DialogAlertModule()
+        val result = module.validate(
+            ActionStep(
+                moduleId = module.id,
+                parameters = mapOf(
+                    "buttons" to "我还醒着\n马上睡",
+                    "enableTimeout" to true,
+                    "timeoutSeconds" to 10,
+                    "timeoutDefaultIndex" to 2
+                )
+            ),
+            emptyList()
+        )
+
+        assertEquals(false, result.isValid)
     }
 
     @Test

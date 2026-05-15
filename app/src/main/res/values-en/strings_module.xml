@@ -8,6 +8,7 @@
     <string name="category_data">Data Processing</string>
     <string name="category_ui">UI Control</string>
     <string name="category_trigger">Triggers</string>
+    <string name="category_constraint">Constraints</string>
     <string name="category_template">Templates</string>
     <string name="category_feishu">Feishu</string>
     <string name="category_core">Core (Beta)</string>
@@ -386,10 +387,18 @@
     <string name="param_vflow_device_dialog_alert_title_name">Title</string>
     <string name="param_vflow_device_dialog_alert_message_name">Message</string>
     <string name="param_vflow_device_dialog_alert_buttons_name">Buttons</string>
+    <string name="param_vflow_device_dialog_alert_enable_timeout_name">Enable Timeout</string>
+    <string name="param_vflow_device_dialog_alert_timeout_seconds_name">Timeout (Seconds)</string>
+    <string name="param_vflow_device_dialog_alert_timeout_default_index_name">Default Button Index on Timeout</string>
+    <string name="param_vflow_device_dialog_alert_dismiss_on_touch_outside_name">Dismiss on Outside Touch</string>
     <string name="output_vflow_device_dialog_alert_selected_index_name">Selected Button Index</string>
     <string name="output_vflow_device_dialog_alert_selected_text_name">Selected Button Text</string>
     <string name="summary_vflow_device_dialog_alert_prefix">Dialog Alert: </string>
     <string name="msg_vflow_device_dialog_alert_waiting">Waiting for button selection...</string>
+    <string name="overlay_ui_dialog_alert_timeout_notice">Automatically selects %2$s in %1$d seconds.</string>
+    <string name="error_vflow_device_dialog_alert_timeout_invalid">Timeout must be greater than 0 seconds.</string>
+    <string name="error_vflow_device_dialog_alert_timeout_index_invalid">Invalid default button index for timeout.</string>
+    <string name="error_vflow_device_dialog_alert_timeout_index_invalid_desc">Enter a zero-based index within the button range.</string>
 
     <!-- vflow.device.list_selection -->
     <string name="module_vflow_device_list_selection_name">List Selection</string>
