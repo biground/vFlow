@@ -691,6 +691,13 @@
     <string name="option_vflow_trigger_power_connected">Connected</string>
     <string name="option_vflow_trigger_power_disconnected">Disconnected</string>
 
+    <!-- vflow.trigger.shizuku_stopped -->
+    <string name="module_vflow_trigger_shizuku_stopped_name">Shizuku Stopped</string>
+    <string name="module_vflow_trigger_shizuku_stopped_desc">Trigger workflow when Shizuku was available and then becomes unavailable</string>
+    <string name="summary_vflow_trigger_shizuku_stopped">Trigger when Shizuku becomes unavailable</string>
+    <string name="output_vflow_trigger_shizuku_stopped_reason_name">Unavailable Reason</string>
+    <string name="output_vflow_trigger_shizuku_stopped_checked_at_name">Checked At</string>
+
     <!-- vflow.trigger.screen -->
     <string name="module_vflow_trigger_screen_name">Screen Trigger</string>
     <string name="module_vflow_trigger_screen_desc">Trigger workflow when the screen turns on, unlocks, or turns off</string>

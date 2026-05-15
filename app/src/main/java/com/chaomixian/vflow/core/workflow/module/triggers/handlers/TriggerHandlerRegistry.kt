@@ -34,6 +34,7 @@ object TriggerHandlerRegistry {
         register(IntervalTriggerModule().id) { IntervalTriggerHandler() }
         register(BatteryTriggerModule().id) { BatteryTriggerHandler() }
         register(PowerTriggerModule().id) { PowerTriggerHandler() }
+        register(ShizukuStoppedTriggerModule().id) { ShizukuStoppedTriggerHandler() }
         register(ScreenTriggerModule().id) { ScreenTriggerHandler() }
         register(WifiTriggerModule().id) { WifiTriggerHandler() }
         register(BluetoothTriggerModule().id) { BluetoothTriggerHandler() }

@@ -76,6 +76,7 @@ object ModuleRegistry {
         register(IntervalTriggerModule(), context)
         register(BatteryTriggerModule(), context)
         register(PowerTriggerModule(), context)
+        register(ShizukuStoppedTriggerModule(), context)
         register(ScreenTriggerModule(), context)
         register(WifiTriggerModule(), context)
         register(BluetoothTriggerModule(), context)

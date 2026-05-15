@@ -691,6 +691,13 @@
     <string name="option_vflow_trigger_power_connected">已连接</string>
     <string name="option_vflow_trigger_power_disconnected">已断开</string>
 
+    <!-- vflow.trigger.shizuku_stopped -->
+    <string name="module_vflow_trigger_shizuku_stopped_name">Shizuku 已停止</string>
+    <string name="module_vflow_trigger_shizuku_stopped_desc">当 Shizuku 曾经可用后变为不可用时触发工作流</string>
+    <string name="summary_vflow_trigger_shizuku_stopped">Shizuku 不可用时触发</string>
+    <string name="output_vflow_trigger_shizuku_stopped_reason_name">不可用原因</string>
+    <string name="output_vflow_trigger_shizuku_stopped_checked_at_name">检测时间</string>
+
     <!-- vflow.trigger.screen -->
     <string name="module_vflow_trigger_screen_name">屏幕触发</string>
     <string name="module_vflow_trigger_screen_desc">当亮屏、解锁或息屏时触发工作流</string>
