@@ -23,6 +23,7 @@ import com.chaomixian.vflow.R
 import com.chaomixian.vflow.core.module.CustomEditorViewHolder
 import com.chaomixian.vflow.core.module.ModuleUIProvider
 import com.chaomixian.vflow.core.workflow.model.ActionStep
+import com.chaomixian.vflow.ui.workflow_editor.AmapLocationPickerActivity
 import com.google.android.material.chip.Chip
 import com.google.android.material.chip.ChipGroup
 import com.google.android.material.slider.Slider
@@ -41,6 +42,7 @@ class LocationTriggerUIProvider : ModuleUIProvider {
         val radiusText: TextView = view.findViewById(R.id.text_radius)
         val locationNameInput: EditText = view.findViewById(R.id.input_location_name)
         val getCurrentLocationButton: Button = view.findViewById(R.id.button_get_current_location)
+        val pickLocationOnMapButton: Button = view.findViewById(R.id.button_pick_location_on_map)
     }
 
     override fun getHandledInputIds(): Set<String> {
@@ -117,6 +119,36 @@ class LocationTriggerUIProvider : ModuleUIProvider {
         // 获取当前位置按钮
         holder.getCurrentLocationButton.setOnClickListener {
             showLocationOptionsDialog(context, holder, onParametersChanged)
+        }
+        holder.pickLocationOnMapButton.setOnClickListener {
+            val launcher = onStartActivityForResult ?: return@setOnClickListener
+            val intent = AmapLocationPickerActivity.createIntent(
+                context = context,
+                latitude = holder.latitudeInput.text.toString().toDoubleOrNull() ?: 39.9042,
+                longitude = holder.longitudeInput.text.toString().toDoubleOrNull() ?: 116.4074,
+                radius = holder.radiusSlider.value.toDouble(),
+                locationName = holder.locationNameInput.text.toString()
+            )
+            launcher(intent) { resultCode, data ->
+                if (resultCode != android.app.Activity.RESULT_OK || data == null) return@launcher
+                val selectedLatitude = data.getDoubleExtra(
+                    AmapLocationPickerActivity.EXTRA_LATITUDE,
+                    39.9042
+                )
+                val selectedLongitude = data.getDoubleExtra(
+                    AmapLocationPickerActivity.EXTRA_LONGITUDE,
+                    116.4074
+                )
+                val selectedName = data.getStringExtra(
+                    AmapLocationPickerActivity.EXTRA_LOCATION_NAME
+                ).orEmpty()
+                holder.latitudeInput.setText(String.format("%.6f", selectedLatitude))
+                holder.longitudeInput.setText(String.format("%.6f", selectedLongitude))
+                if (selectedName.isNotBlank()) {
+                    holder.locationNameInput.setText(selectedName)
+                }
+                onParametersChanged()
+            }
         }
 
         return holder

@@ -8,6 +8,14 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose") version "2.3.20"
 }
 
+val localProperties = Properties().apply {
+    val localPropertiesFile = rootProject.file("local.properties")
+    if (localPropertiesFile.exists()) {
+        load(FileInputStream(localPropertiesFile))
+    }
+}
+val amapApiKey: String = localProperties.getProperty("AMAP_API_KEY", "")
+
 android {
     namespace = "com.chaomixian.vflow"
     compileSdk = 36
@@ -20,6 +28,7 @@ android {
         versionName = "1.5.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        manifestPlaceholders["AMAP_API_KEY"] = amapApiKey
     }
 
     signingConfigs {
@@ -203,6 +212,9 @@ dependencies {
     // Umeng analytics / crash telemetry
     implementation("com.umeng.umsdk:common:9.9.1")
     implementation("com.umeng.umsdk:asms:1.8.7.2")
+
+    // AMap visual map picker. This artifact also bundles AMap location classes.
+    implementation("com.amap.api:3dmap:10.0.600")
 }
 
 afterEvaluate {

@@ -8,6 +8,8 @@ import com.chaomixian.vflow.api.ApiService
 import com.chaomixian.vflow.core.locale.LocaleManager
 import com.chaomixian.vflow.core.logging.DebugLogger
 import com.chaomixian.vflow.core.telemetry.TelemetryManager
+import com.chaomixian.vflow.core.workflow.module.triggers.AmapApiKeyPreferences
+import com.chaomixian.vflow.core.workflow.module.triggers.LocationTriggerPreferences
 import com.chaomixian.vflow.data.update.UpdateChecker
 import com.chaomixian.vflow.data.update.UpdateInfo
 import com.chaomixian.vflow.services.BackgroundServiceNotificationPreferences
@@ -40,6 +42,8 @@ data class SettingsUiState(
     val allowPopupKeepScreenOn: Boolean = false,
     val hideFromRecents: Boolean = false,
     val allowShowOnLockScreen: Boolean = false,
+    val locationUpdateIntervalMinutes: Int = LocationTriggerPreferences.DEFAULT_INTERVAL_MINUTES,
+    val amapApiKey: String = "",
     val defaultShellMode: String = "shizuku",
     val loggingEnabled: Boolean = false,
     val telemetryEnabled: Boolean = false,
@@ -86,6 +90,8 @@ class SettingsViewModel : ViewModel() {
                 allowPopupKeepScreenOn = OverlayUiPreferences.isPopupKeepScreenOnAllowed(context),
                 hideFromRecents = prefs.getBoolean(KEY_HIDE_FROM_RECENTS, false),
                 allowShowOnLockScreen = OverlayUiPreferences.isShowOnLockScreenAllowed(context),
+                locationUpdateIntervalMinutes = LocationTriggerPreferences.getIntervalMinutes(context),
+                amapApiKey = AmapApiKeyPreferences.getApiKey(context),
                 defaultShellMode = prefs.getString(
                     KEY_DEFAULT_SHELL_MODE,
                     DEFAULT_SHELL_MODE
@@ -220,6 +226,21 @@ class SettingsViewModel : ViewModel() {
     fun setAllowShowOnLockScreen(context: Context, enabled: Boolean) = editPref(context) {
         putBoolean(OverlayUiPreferences.KEY_ALLOW_SHOW_ON_LOCK_SCREEN, enabled)
         _uiState.update { it.copy(allowShowOnLockScreen = enabled) }
+    }
+
+    fun setLocationUpdateIntervalMinutes(context: Context, minutes: Int) {
+        LocationTriggerPreferences.setIntervalMinutes(context, minutes)
+        _uiState.update {
+            it.copy(
+                locationUpdateIntervalMinutes =
+                    LocationTriggerPreferences.normalizeIntervalMinutes(minutes)
+            )
+        }
+    }
+
+    fun setAmapApiKey(context: Context, apiKey: String) {
+        AmapApiKeyPreferences.setApiKey(context, apiKey)
+        _uiState.update { it.copy(amapApiKey = AmapApiKeyPreferences.getApiKey(context)) }
     }
 
     fun setDefaultShellMode(context: Context, mode: String) = editPref(context) {

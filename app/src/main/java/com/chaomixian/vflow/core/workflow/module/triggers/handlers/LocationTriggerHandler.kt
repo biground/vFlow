@@ -13,9 +13,12 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import com.chaomixian.vflow.core.logging.DebugLogger
+import com.chaomixian.vflow.core.workflow.constraints.ConstraintEvaluationContext
+import com.chaomixian.vflow.core.workflow.constraints.TriggerConstraintEvaluator
 import com.chaomixian.vflow.core.workflow.model.TriggerSpec
 import com.chaomixian.vflow.core.workflow.module.triggers.LocationTriggerData
 import com.chaomixian.vflow.core.workflow.module.triggers.LocationTriggerModule
+import com.chaomixian.vflow.core.workflow.module.triggers.LocationTriggerPreferences
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.abs
@@ -37,9 +40,7 @@ class LocationTriggerHandler : ListeningTriggerHandler() {
         private const val MIN_DISTANCE_UPDATE_PASSIVE = 0f
         private const val MIN_TIME_UPDATE_PASSIVE = 0L
         private const val MIN_DISTANCE_UPDATE_NETWORK = 200f
-        private const val MIN_TIME_UPDATE_NETWORK = 5 * 60 * 1000L
         private const val MIN_DISTANCE_UPDATE_GPS = 50f
-        private const val MIN_TIME_UPDATE_GPS = 60 * 1000L
 
         // 位置去重参数
         private const val MIN_LOCATION_CHANGE = 5f // 最小位置变化（米）- 降低门槛
@@ -162,11 +163,14 @@ class LocationTriggerHandler : ListeningTriggerHandler() {
                     try {
                         locationManager.requestLocationUpdates(
                             LocationManager.NETWORK_PROVIDER,
-                            MIN_TIME_UPDATE_NETWORK,
+                            LocationTriggerPreferences.getIntervalMillis(context),
                             MIN_DISTANCE_UPDATE_NETWORK,
                             currentLocationListener!!
                         )
-                        DebugLogger.i(TAG, "网络定位监听已启动（5分钟或200米）")
+                        DebugLogger.i(
+                            TAG,
+                            "网络定位监听已启动（${LocationTriggerPreferences.getIntervalMinutes(context)}分钟或200米）"
+                        )
                     } catch (e: Exception) {
                         DebugLogger.e(TAG, "启动网络定位失败", e)
                     }
@@ -217,11 +221,14 @@ class LocationTriggerHandler : ListeningTriggerHandler() {
                     try {
                         locationManager.requestLocationUpdates(
                             LocationManager.GPS_PROVIDER,
-                            MIN_TIME_UPDATE_GPS,
+                            LocationTriggerPreferences.getIntervalMillis(context),
                             MIN_DISTANCE_UPDATE_GPS,
                             currentLocationListener!!
                         )
-                        DebugLogger.i(TAG, "GPS 监听已启动（1分钟或50米）")
+                        DebugLogger.i(
+                            TAG,
+                            "GPS 监听已启动（${LocationTriggerPreferences.getIntervalMinutes(context)}分钟或50米）"
+                        )
                     } catch (e: Exception) {
                         DebugLogger.e(TAG, "启动 GPS 失败", e)
                     }
@@ -327,12 +334,21 @@ class LocationTriggerHandler : ListeningTriggerHandler() {
     /**
      * 根据距离动态调整定位策略（带防抖）
      */
-    private fun adjustLocationStrategy(context: Context, location: Location, minDistance: Double, currentTime: Long) {
-        val newStrategy = when {
+    private suspend fun adjustLocationStrategy(context: Context, location: Location, minDistance: Double, currentTime: Long) {
+        val desiredStrategy = when {
             minDistance > 10000 -> LocationStrategy.PASSIVE      // 10km 外：仅被动监听
             minDistance > 2000 -> LocationStrategy.NETWORK      // 2km 外：网络定位
             minDistance > 500 -> LocationStrategy.NETWORK       // 500m 外：网络定位
             else -> LocationStrategy.GPS                        // 500m 内：启用 GPS
+        }
+        val newStrategy = if (
+            desiredStrategy != LocationStrategy.PASSIVE &&
+            !hasAnyTriggerAllowedForActiveLocation(context)
+        ) {
+            DebugLogger.d(TAG, "位置触发器约束不满足，保持被动定位以降低耗电")
+            LocationStrategy.PASSIVE
+        } else {
+            desiredStrategy
         }
 
         // 防抖：如果距离上次策略切换时间太短，不切换
@@ -352,6 +368,14 @@ class LocationTriggerHandler : ListeningTriggerHandler() {
                 LocationStrategy.NETWORK -> switchToNetworkListening(context)
                 LocationStrategy.GPS -> switchToGPSListening(context)
             }
+        }
+    }
+
+    private suspend fun hasAnyTriggerAllowedForActiveLocation(context: Context): Boolean {
+        if (listeningTriggers.isEmpty()) return false
+        val evaluationContext = ConstraintEvaluationContext.from(context)
+        return listeningTriggers.any { trigger ->
+            TriggerConstraintEvaluator.evaluateLowCost(evaluationContext, trigger.step).allowed
         }
     }
 

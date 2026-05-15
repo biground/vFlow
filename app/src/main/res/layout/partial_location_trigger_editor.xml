@@ -89,9 +89,18 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="使用当前位置"
-        android:layout_marginBottom="16dp"
+        android:layout_marginBottom="8dp"
         style="@style/Widget.Material3.Button.OutlinedButton"
         app:icon="@android:drawable/ic_menu_mylocation" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/button_pick_location_on_map"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/button_pick_location_on_map"
+        android:layout_marginBottom="16dp"
+        style="@style/Widget.Material3.Button.OutlinedButton"
+        app:icon="@drawable/rounded_location_on_24" />
 
     <!-- 半径设置 -->
     <TextView

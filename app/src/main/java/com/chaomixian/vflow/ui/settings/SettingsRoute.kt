@@ -179,6 +179,18 @@ fun SettingsRoute(
             onSetAllowShowOnLockScreen = { enabled ->
                 settingsViewModel.setAllowShowOnLockScreen(context, enabled)
             },
+            onSetLocationUpdateIntervalMinutes = { minutes ->
+                settingsViewModel.setLocationUpdateIntervalMinutes(context, minutes)
+                context.startService(
+                    Intent(context, TriggerService::class.java).apply {
+                        action = TriggerService.ACTION_RELOAD_TRIGGERS
+                    }
+                )
+            },
+            onSaveAmapApiKey = { apiKey ->
+                settingsViewModel.setAmapApiKey(context, apiKey)
+                context.toast(R.string.settings_amap_api_key_saved)
+            },
             onSetApiEnabled = { enabled ->
                 if (enabled) {
                     val started = apiService.startServer()

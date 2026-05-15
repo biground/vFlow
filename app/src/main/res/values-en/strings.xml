@@ -116,6 +116,16 @@
     <string name="settings_switch_auto_check_updates_desc">Automatically check for new versions when opening Settings.</string>
     <string name="settings_switch_allow_show_on_lock_screen">Allow on lock screen</string>
     <string name="settings_switch_allow_show_on_lock_screen_desc">Allow dialogs and similar surfaces to appear on the lock screen.</string>
+    <string name="settings_location_update_interval">Location trigger interval</string>
+    <string name="settings_location_update_interval_desc">Minimum interval for active location updates. Shorter intervals react faster but use more battery.</string>
+    <string name="settings_location_update_interval_value">%1$d min</string>
+    <string name="settings_amap_api_key">AMap API Key</string>
+    <string name="settings_amap_api_key_desc">Used by the location trigger map picker. Apply for a key with this app package and signing SHA1.</string>
+    <string name="settings_amap_api_key_configured">Configured</string>
+    <string name="settings_amap_api_key_not_configured">Not configured</string>
+    <string name="settings_amap_api_key_input_label">API Key</string>
+    <string name="settings_amap_api_key_input_hint">AMap Android keys are usually bound to the app package name and signing SHA1.</string>
+    <string name="settings_amap_api_key_saved">AMap API Key saved</string>
     <string name="settings_switch_api_enabled">Enable Remote API</string>
     <string name="settings_switch_api_enabled_desc">Allow workflow access and control through LAN</string>
 
@@ -243,6 +253,7 @@
     <string name="workflow_editor_trigger_group_title">#0 Triggers</string>
     <string name="picker_select_trigger">Select a trigger</string>
     <string name="picker_select_action">Select an action</string>
+    <string name="picker_select_constraint">Select a constraint</string>
     <string name="picker_select_date">Select Date</string>
     <string name="picker_select_time">Select Time</string>
     <string name="picker_select_datetime">Select Date and Time</string>
@@ -975,6 +986,21 @@
     <string name="label_operation_type">Operation Type</string>
     <string name="label_edit_action">Edit Action</string>
     <string name="button_save">Save</string>
+    <string name="button_test_trigger">Test trigger</string>
+    <string name="trigger_constraints_title">Trigger constraints</string>
+    <string name="trigger_constraints_empty">No constraints added</string>
+    <string name="trigger_constraints_count">%1$d constraints added</string>
+    <string name="trigger_constraints_summary_count">%1$d constraints</string>
+    <string name="trigger_constraints_add">Add constraint</string>
+    <string name="trigger_constraints_delete_title">Delete constraint</string>
+    <string name="trigger_constraints_delete_message">Delete \"%1$s\"?</string>
+    <string name="trigger_constraints_disabled_suffix">Disabled</string>
+    <string name="button_pick_location_on_map">Pick on map</string>
+    <string name="amap_picker_missing_key_title">AMap key is missing</string>
+    <string name="amap_picker_missing_key_message">Configure an AMap API Key in Settings before using map picking.</string>
+    <string name="amap_picker_confirm">Use this location</string>
+    <string name="amap_picker_default_name">Map pick</string>
+    <string name="amap_picker_selected_location">Lat %1$.6f, lon %2$.6f, radius %3$d m</string>
     <string name="label_error_handling_strategy">Error Handling Strategy</string>
     <string name="label_sender_number_contains">Sender Number Contains</string>
     <string name="label_sms_content_contains">Message Content Contains</string>
@@ -1006,6 +1032,7 @@
     <string name="desc_enable_action">Enable Action</string>
     <string name="desc_more_action">More Actions</string>
     <string name="desc_restore_block_action">Restore Missing Block Steps</string>
+    <string name="desc_execute_from_here_action">Run From Here</string>
     <string name="insert_below">Insert Below</string>
     <string name="desc_select_device">Select Device</string>
     <string name="label_trigger_condition">Trigger Condition</string>

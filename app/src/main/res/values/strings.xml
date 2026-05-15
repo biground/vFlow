@@ -116,6 +116,16 @@
     <string name="settings_switch_auto_check_updates_desc">进入设置时自动检查新版本。</string>
     <string name="settings_switch_allow_show_on_lock_screen">允许锁屏显示</string>
     <string name="settings_switch_allow_show_on_lock_screen_desc">允许弹窗等在锁屏界面显示。</string>
+    <string name="settings_location_update_interval">位置触发器定位间隔</string>
+    <string name="settings_location_update_interval_desc">主动获取位置的最短时间间隔。越短越及时，但更耗电。</string>
+    <string name="settings_location_update_interval_value">%1$d 分钟</string>
+    <string name="settings_amap_api_key">高德地图 API Key</string>
+    <string name="settings_amap_api_key_desc">用于位置触发器的地图选点。需使用当前应用包名和签名申请。</string>
+    <string name="settings_amap_api_key_configured">已配置</string>
+    <string name="settings_amap_api_key_not_configured">未配置</string>
+    <string name="settings_amap_api_key_input_label">API Key</string>
+    <string name="settings_amap_api_key_input_hint">高德 Android Key 通常绑定应用包名和签名 SHA1。</string>
+    <string name="settings_amap_api_key_saved">高德地图 API Key 已保存</string>
     <string name="settings_switch_api_enabled">启用远程API</string>
     <string name="settings_switch_api_enabled_desc">允许通过局域网访问和控制工作流</string>
 
@@ -243,6 +253,7 @@
     <string name="workflow_editor_trigger_group_title">#0 触发器</string>
     <string name="picker_select_trigger">选择一个触发器</string>
     <string name="picker_select_action">选择一个动作</string>
+    <string name="picker_select_constraint">选择一个约束</string>
     <string name="picker_select_date">选择日期</string>
     <string name="picker_select_time">选择时间</string>
     <string name="picker_select_datetime">选择日期和时间</string>
@@ -975,6 +986,21 @@
     <string name="label_operation_type">操作类型</string>
     <string name="label_edit_action">编辑动作</string>
     <string name="button_save">保存</string>
+    <string name="button_test_trigger">测试触发器</string>
+    <string name="trigger_constraints_title">触发器约束</string>
+    <string name="trigger_constraints_empty">未添加约束</string>
+    <string name="trigger_constraints_count">已添加 %1$d 个约束</string>
+    <string name="trigger_constraints_summary_count">%1$d 个约束</string>
+    <string name="trigger_constraints_add">添加约束</string>
+    <string name="trigger_constraints_delete_title">删除约束</string>
+    <string name="trigger_constraints_delete_message">确定要删除“%1$s”吗？</string>
+    <string name="trigger_constraints_disabled_suffix">已停用</string>
+    <string name="button_pick_location_on_map">地图选点</string>
+    <string name="amap_picker_missing_key_title">未配置高德 Key</string>
+    <string name="amap_picker_missing_key_message">请先在设置中配置高德地图 API Key，然后再使用地图选点。</string>
+    <string name="amap_picker_confirm">使用此位置</string>
+    <string name="amap_picker_default_name">地图选点</string>
+    <string name="amap_picker_selected_location">纬度 %1$.6f，经度 %2$.6f，半径 %3$d 米</string>
     <string name="label_error_handling_strategy">异常处理策略</string>
     <string name="label_sender_number_contains">发件人号码包含</string>
     <string name="label_sms_content_contains">短信内容包含</string>
@@ -1006,6 +1032,7 @@
     <string name="desc_enable_action">启用动作</string>
     <string name="desc_more_action">更多操作</string>
     <string name="desc_restore_block_action">恢复缺失块步骤</string>
+    <string name="desc_execute_from_here_action">从当前位置开始执行</string>
     <string name="insert_below">在下方插入</string>
     <string name="desc_select_device">选择设备</string>
     <string name="label_trigger_condition">触发条件</string>

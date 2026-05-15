@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Security
@@ -92,6 +93,8 @@ data class SettingsScreenActions(
     val onOpenModelConfig: () -> Unit,
     val onSetAutoCheckUpdatesEnabled: (Boolean) -> Unit,
     val onSetAllowShowOnLockScreen: (Boolean) -> Unit,
+    val onSetLocationUpdateIntervalMinutes: (Int) -> Unit,
+    val onSaveAmapApiKey: (String) -> Unit,
     val onSetApiEnabled: (Boolean) -> Unit,
     val onOpenApiSettings: () -> Unit,
     val onSetProgressNotificationEnabled: (Boolean) -> Unit,
@@ -143,6 +146,7 @@ fun SettingsScreen(
 ) {
     var searchQuery by rememberSaveable { mutableStateOf("") }
     var showBackgroundNotificationDialog by rememberSaveable { mutableStateOf(false) }
+    var showAmapApiKeyDialog by rememberSaveable { mutableStateOf(false) }
     val normalizedQuery = remember(searchQuery) { normalizeSearchQuery(searchQuery) }
     val focusManager = LocalFocusManager.current
 
@@ -187,6 +191,21 @@ fun SettingsScreen(
     val autoCheckUpdatesSubtitle = stringResource(R.string.settings_switch_auto_check_updates_desc)
     val lockScreenTitle = stringResource(R.string.settings_switch_allow_show_on_lock_screen)
     val lockScreenSubtitle = stringResource(R.string.settings_switch_allow_show_on_lock_screen_desc)
+    val locationIntervalTitle = stringResource(R.string.settings_location_update_interval)
+    val locationIntervalSubtitle = stringResource(R.string.settings_location_update_interval_desc)
+    val locationIntervalValueLabel = stringResource(
+        R.string.settings_location_update_interval_value,
+        uiState.locationUpdateIntervalMinutes
+    )
+    val amapApiKeyTitle = stringResource(R.string.settings_amap_api_key)
+    val amapApiKeySubtitle = stringResource(R.string.settings_amap_api_key_desc)
+    val amapApiKeyValue = stringResource(
+        if (uiState.amapApiKey.isBlank()) {
+            R.string.settings_amap_api_key_not_configured
+        } else {
+            R.string.settings_amap_api_key_configured
+        }
+    )
     val apiEnabledTitle = stringResource(R.string.settings_switch_api_enabled)
     val apiEnabledSubtitle = stringResource(R.string.settings_switch_api_enabled_desc)
     val apiSettingsTitle = stringResource(R.string.api_settings_label)
@@ -281,6 +300,8 @@ fun SettingsScreen(
         modelConfigTitle, modelConfigSubtitle,
         autoCheckUpdatesTitle, autoCheckUpdatesSubtitle,
         lockScreenTitle, lockScreenSubtitle,
+        locationIntervalTitle, locationIntervalSubtitle, locationIntervalValueLabel,
+        amapApiKeyTitle, amapApiKeySubtitle, amapApiKeyValue,
         apiEnabledTitle, apiEnabledSubtitle,
         apiSettingsTitle, apiSettingsSubtitle, apiStatusValue,
         progressNotificationTitle, progressNotificationSubtitle,
@@ -416,7 +437,7 @@ fun SettingsScreen(
                     position = SettingsGroupPosition.Bottom,
                     valueLabel = appScaleValueLabel,
                     initialSliderValue = uiState.appScale * 100f,
-                    onScaleChange = actions.onSetAppScale
+                    onValueChangeFinished = { actions.onSetAppScale(it / 100f) }
                 )
             }
         }
@@ -464,6 +485,29 @@ fun SettingsScreen(
                     position = SettingsGroupPosition.Middle,
                     checked = uiState.allowShowOnLockScreen,
                     onCheckedChange = actions.onSetAllowShowOnLockScreen
+                )
+                NativeSliderRow(
+                    title = locationIntervalTitle,
+                    subtitle = locationIntervalSubtitle,
+                    icon = Icons.Default.LocationOn,
+                    tone = languageTone(),
+                    position = SettingsGroupPosition.Middle,
+                    valueLabel = locationIntervalValueLabel,
+                    initialSliderValue = uiState.locationUpdateIntervalMinutes.toFloat(),
+                    valueRange = 1f..30f,
+                    steps = 28,
+                    onValueChangeFinished = {
+                        actions.onSetLocationUpdateIntervalMinutes(it.roundToInt())
+                    }
+                )
+                NativeEntryRow(
+                    title = amapApiKeyTitle,
+                    subtitle = amapApiKeySubtitle,
+                    value = amapApiKeyValue,
+                    icon = Icons.Default.LocationOn,
+                    tone = languageTone(),
+                    position = SettingsGroupPosition.Middle,
+                    onClick = { showAmapApiKeyDialog = true }
                 )
                 NativeSwitchRow(
                     title = apiEnabledTitle,
@@ -703,6 +747,57 @@ fun SettingsScreen(
             }
         )
     }
+
+    if (showAmapApiKeyDialog) {
+        AmapApiKeyDialog(
+            initialApiKey = uiState.amapApiKey,
+            onDismiss = { showAmapApiKeyDialog = false },
+            onSave = { apiKey ->
+                actions.onSaveAmapApiKey(apiKey)
+                showAmapApiKeyDialog = false
+            }
+        )
+    }
+}
+
+@Composable
+private fun AmapApiKeyDialog(
+    initialApiKey: String,
+    onDismiss: () -> Unit,
+    onSave: (String) -> Unit
+) {
+    var apiKey by rememberSaveable(initialApiKey) { mutableStateOf(initialApiKey) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(text = stringResource(R.string.settings_amap_api_key)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(
+                    modifier = Modifier.fillMaxWidth(),
+                    value = apiKey,
+                    onValueChange = { apiKey = it },
+                    label = { Text(text = stringResource(R.string.settings_amap_api_key_input_label)) },
+                    singleLine = true
+                )
+                Text(
+                    text = stringResource(R.string.settings_amap_api_key_input_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onSave(apiKey) }) {
+                Text(text = stringResource(R.string.common_save))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(text = stringResource(android.R.string.cancel))
+            }
+        }
+    )
 }
 
 @Composable
@@ -946,7 +1041,9 @@ private fun NativeSliderRow(
     position: SettingsGroupPosition,
     valueLabel: String,
     initialSliderValue: Float,
-    onScaleChange: (Float) -> Unit
+    valueRange: ClosedFloatingPointRange<Float> = 75f..125f,
+    steps: Int = 9,
+    onValueChangeFinished: (Float) -> Unit
 ) {
     var sliderValue by remember(initialSliderValue) { mutableFloatStateOf(initialSliderValue) }
 
@@ -970,10 +1067,10 @@ private fun NativeSliderRow(
                 .padding(start = 76.dp, end = 20.dp, bottom = 12.dp),
             value = sliderValue,
             onValueChange = { sliderValue = it },
-            valueRange = 75f..125f,
-            steps = 9,
+            valueRange = valueRange,
+            steps = steps,
             onValueChangeFinished = {
-                onScaleChange(sliderValue / 100f)
+                onValueChangeFinished(sliderValue)
             }
         )
     }
