@@ -20,6 +20,16 @@ internal fun parseImportedActionStep(stepMap: Map<*, *>, errorLabel: String): Ac
         is Map<*, *> -> normalizeImportedJsonObject(rawParameters)
         else -> throw IllegalArgumentException("Invalid $errorLabel format: parameters must be an object")
     }
+    val rawConstraints = stepMap["constraints"]
+    val constraints = when (rawConstraints) {
+        null -> emptyList()
+        is List<*> -> rawConstraints.mapIndexed { index, item ->
+            val constraintMap = item as? Map<*, *>
+                ?: throw IllegalArgumentException("Invalid $errorLabel format: constraints[$index] must be an object")
+            parseImportedActionStep(constraintMap, "$errorLabel constraint")
+        }
+        else -> throw IllegalArgumentException("Invalid $errorLabel format: constraints must be an array")
+    }
 
     return ActionStep(
         moduleId = moduleId,
@@ -27,7 +37,7 @@ internal fun parseImportedActionStep(stepMap: Map<*, *>, errorLabel: String): Ac
         isDisabled = stepMap["isDisabled"] as? Boolean ?: false,
         indentationLevel = (stepMap["indentationLevel"] as? Number)?.toInt() ?: 0,
         id = stepMap["id"] as? String ?: UUID.randomUUID().toString()
-    )
+    ).withConstraints(constraints)
 }
 
 /**

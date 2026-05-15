@@ -10,6 +10,8 @@ import com.chaomixian.vflow.core.logging.LogMessageKey
 import com.chaomixian.vflow.core.logging.LogStatus
 import com.chaomixian.vflow.core.workflow.model.Workflow
 import com.chaomixian.vflow.core.workflow.model.TriggerSpec
+import com.chaomixian.vflow.core.workflow.constraints.ConstraintEvaluationContext
+import com.chaomixian.vflow.core.workflow.constraints.TriggerConstraintEvaluator
 import com.chaomixian.vflow.permissions.Permission
 import com.chaomixian.vflow.permissions.PermissionManager
 
@@ -47,6 +49,28 @@ object TriggerExecutionCoordinator {
                     status = LogStatus.CANCELLED,
                     messageKey = LogMessageKey.TRIGGER_SKIPPED_MISSING_PERMISSIONS,
                     messageArgs = listOf(permissionNames)
+                )
+            )
+            return false
+        }
+
+        val constraintResult = TriggerConstraintEvaluator.evaluate(
+            context = ConstraintEvaluationContext.from(appContext),
+            trigger = trigger.step
+        )
+        if (!constraintResult.allowed) {
+            val reason = constraintResult.reason ?: "约束不满足"
+            DebugLogger.i(
+                TAG,
+                "触发器已命中，但工作流 '${trigger.workflowName}' 的约束不满足: $reason"
+            )
+            LogManager.addLog(
+                LogEntry(
+                    workflowId = trigger.workflowId,
+                    workflowName = trigger.workflowName,
+                    timestamp = System.currentTimeMillis(),
+                    status = LogStatus.CANCELLED,
+                    message = "触发器约束不满足：$reason"
                 )
             )
             return false

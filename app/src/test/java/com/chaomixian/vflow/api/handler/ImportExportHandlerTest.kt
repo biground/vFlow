@@ -41,6 +41,29 @@ class ImportExportHandlerTest {
     }
 
     @Test
+    fun `parse imported action step preserves constraints`() {
+        val step = parseImportedActionStep(
+            mapOf(
+                "moduleId" to "vflow.trigger.location",
+                "parameters" to mapOf("event" to "enter"),
+                "id" to "trigger-1",
+                "constraints" to listOf(
+                    mapOf(
+                        "moduleId" to "vflow.constraint.time_range",
+                        "parameters" to mapOf("start_time" to "00:00", "end_time" to "12:00"),
+                        "id" to "constraint-1"
+                    )
+                )
+            ),
+            "trigger"
+        )
+
+        assertEquals(1, step.constraints.size)
+        assertEquals("vflow.constraint.time_range", step.constraints.single().moduleId)
+        assertEquals("12:00", step.constraints.single().parameters["end_time"])
+    }
+
+    @Test
     fun `parse imported action step rejects non object parameters`() {
         val error = runCatching {
             parseImportedActionStep(
@@ -77,5 +100,25 @@ class ImportExportHandlerTest {
         val items = body["items"] as List<*>
         assertTrue(items.first() is Map<*, *>)
         assertEquals("nested", (items.first() as Map<*, *>)["value"])
+    }
+
+    @Test
+    fun `simple action step dto preserves constraints`() {
+        val step = SimpleActionStepDto(
+            id = "trigger-2",
+            moduleId = "vflow.trigger.location",
+            parameters = mapOf("event" to "enter"),
+            constraints = listOf(
+                SimpleActionStepDto(
+                    id = "constraint-2",
+                    moduleId = "vflow.constraint.weekday",
+                    parameters = mapOf("days" to listOf(1, 2, 3))
+                )
+            )
+        ).toActionStep()
+
+        assertEquals(1, step.constraints.size)
+        assertEquals("vflow.constraint.weekday", step.constraints.single().moduleId)
+        assertEquals(listOf(1, 2, 3), step.constraints.single().parameters["days"])
     }
 }

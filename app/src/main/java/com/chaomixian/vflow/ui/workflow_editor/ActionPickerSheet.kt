@@ -32,6 +32,13 @@ import java.util.LinkedHashMap
 class ActionPickerSheet : BottomSheetDialogFragment() {
     var onActionSelected: ((ActionModule) -> Unit)? = null
 
+    companion object {
+        const val ARG_PICKER_MODE = "picker_mode"
+        const val MODE_ACTION = "action"
+        const val MODE_TRIGGER = "trigger"
+        const val MODE_CONSTRAINT = "constraint"
+    }
+
     private lateinit var recyclerView: RecyclerView
     private lateinit var searchView: SearchView
     private lateinit var permissionChipGroup: ChipGroup
@@ -45,8 +52,9 @@ class ActionPickerSheet : BottomSheetDialogFragment() {
     private val debounceHandler = Handler(Looper.getMainLooper())
     private var searchJob: Job? = null
     private var selectedPermissions = mutableSetOf<String>()
-    private val isTriggerPicker: Boolean
-        get() = arguments?.getBoolean("is_trigger_picker", false) ?: false
+    private val pickerMode: String
+        get() = arguments?.getString(ARG_PICKER_MODE)
+            ?: if (arguments?.getBoolean("is_trigger_picker", false) == true) MODE_TRIGGER else MODE_ACTION
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -90,19 +98,24 @@ class ActionPickerSheet : BottomSheetDialogFragment() {
         recyclerView.visibility = View.GONE
 
         lifecycleScope.launch(Dispatchers.IO) {
-            val categorizedModules = if (isTriggerPicker) {
-                ModuleRegistry.getModulesByCategory().filterKeys { it == ModuleCategories.TRIGGER }
-            } else {
-                ModuleRegistry.getModulesByCategory().filterKeys { it != ModuleCategories.TRIGGER }
+            val categorizedModules = when (pickerMode) {
+                MODE_TRIGGER -> ModuleRegistry.getModulesByCategory().filterKeys { it == ModuleCategories.TRIGGER }
+                MODE_CONSTRAINT -> ModuleRegistry.getModulesByCategory().filterKeys { it == ModuleCategories.CONSTRAINT }
+                else -> ModuleRegistry.getModulesByCategory().filterKeys {
+                    it != ModuleCategories.TRIGGER && it != ModuleCategories.CONSTRAINT
+                }
             }
 
             // 使用 LinkedHashMap 保持插入顺序
             val localizedModules = LinkedHashMap<String, List<ActionModule>>()
 
             // 加载最近使用的模块，并作为第一个分类插入
-            if (!isTriggerPicker) {
+            if (pickerMode == MODE_ACTION) {
                 val recentModules = RecentModulesManager.getRecentModules(requireContext())
-                    .filter { it.metadata.getResolvedCategoryId() != ModuleCategories.TRIGGER }
+                    .filter {
+                        val categoryId = it.metadata.getResolvedCategoryId()
+                        categoryId != ModuleCategories.TRIGGER && categoryId != ModuleCategories.CONSTRAINT
+                    }
                 if (recentModules.isNotEmpty()) {
                     localizedModules[""] = recentModules
                 }
@@ -117,7 +130,11 @@ class ActionPickerSheet : BottomSheetDialogFragment() {
             filteredModuleGroups = localizedModules
 
             withContext(Dispatchers.Main) {
-                titleView.text = if (isTriggerPicker) getString(R.string.picker_select_trigger) else getString(R.string.picker_select_action)
+                titleView.text = when (pickerMode) {
+                    MODE_TRIGGER -> getString(R.string.picker_select_trigger)
+                    MODE_CONSTRAINT -> getString(R.string.picker_select_constraint)
+                    else -> getString(R.string.picker_select_action)
+                }
                 setupPermissionChips()
                 progressBar.visibility = View.GONE
                 recyclerView.visibility = View.VISIBLE
@@ -201,7 +218,7 @@ class ActionPickerSheet : BottomSheetDialogFragment() {
 
     private fun onModuleSelected(module: ActionModule) {
         // 保存到最近使用记录
-        if (!isTriggerPicker) {
+        if (pickerMode == MODE_ACTION) {
             lifecycleScope.launch(Dispatchers.IO) {
                 RecentModulesManager.addRecentModule(requireContext(), module.id)
             }

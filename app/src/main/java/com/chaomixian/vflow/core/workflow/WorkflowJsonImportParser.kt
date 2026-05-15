@@ -76,17 +76,22 @@ class WorkflowJsonImportParser(
         val triggers: List<com.chaomixian.vflow.core.workflow.model.ActionStep>? = workflow.triggers
         val steps: List<com.chaomixian.vflow.core.workflow.model.ActionStep>? = workflow.steps
         val reentryBehavior: WorkflowReentryBehavior? = workflow.reentryBehavior
+        val id: String? = workflow.id
+        val name: String? = workflow.name
+        val version: String? = workflow.version
+        val cardIconRes: String? = workflow.cardIconRes
+        val cardThemeColor: String? = workflow.cardThemeColor
 
         return workflow.copy(
-            id = workflow.id.takeIf { it.isNotBlank() } ?: UUID.randomUUID().toString(),
-            name = workflow.name.takeIf { it.isNotBlank() } ?: "未命名工作流",
+            id = id?.takeIf { it.isNotBlank() } ?: UUID.randomUUID().toString(),
+            name = name?.takeIf { it.isNotBlank() } ?: "未命名工作流",
             triggers = triggers ?: emptyList(),
             steps = steps ?: emptyList(),
             folderId = workflow.folderId?.takeIf { it.isNotBlank() },
-            cardIconRes = WorkflowVisuals.normalizeIconResName(workflow.cardIconRes),
-            cardThemeColor = WorkflowVisuals.normalizeThemeColorHex(workflow.cardThemeColor),
+            cardIconRes = WorkflowVisuals.normalizeIconResName(cardIconRes),
+            cardThemeColor = WorkflowVisuals.normalizeThemeColorHex(cardThemeColor),
             modifiedAt = workflow.modifiedAt.takeIf { it > 0 } ?: System.currentTimeMillis(),
-            version = workflow.version.takeIf { it.isNotBlank() } ?: "1.0.0",
+            version = version?.takeIf { it.isNotBlank() } ?: "1.0.0",
             vFlowLevel = workflow.vFlowLevel.takeIf { it > 0 } ?: 1,
             description = description?.takeIf { it.isNotBlank() } ?: "",
             author = author?.takeIf { it.isNotBlank() } ?: "",

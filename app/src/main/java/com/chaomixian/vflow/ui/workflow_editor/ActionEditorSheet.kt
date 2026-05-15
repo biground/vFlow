@@ -9,17 +9,24 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.*
+import androidx.core.content.ContextCompat
+import androidx.core.content.res.use
 import androidx.core.view.isVisible
+import androidx.lifecycle.lifecycleScope
 import com.chaomixian.vflow.R
 import com.chaomixian.vflow.core.module.*
+import com.chaomixian.vflow.core.workflow.module.triggers.diagnostics.TriggerDiagnosticRunner
 import com.chaomixian.vflow.core.workflow.model.ActionStepExecutionSettings
 import com.chaomixian.vflow.core.workflow.model.ActionStep
 import com.chaomixian.vflow.ui.common.ModuleDetailDialog
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
+import com.google.android.material.color.MaterialColors
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.materialswitch.MaterialSwitch
 import com.google.android.material.slider.Slider
+import kotlinx.coroutines.launch
 
 /**
  * 模块参数编辑器底部表单。
@@ -38,6 +45,7 @@ class ActionEditorSheet : BottomSheetDialogFragment() {
     private var customEditorHolder: CustomEditorViewHolder? = null
     private val currentParameters = ActionEditorSessionState()
     private var onPickerRequested: ((inputDef: InputDefinition) -> Unit)? = null
+    private val constraintSteps = mutableListOf<ActionStep>()
 
     // 引用容器视图
     private var customUiCard: MaterialCardView? = null
@@ -46,6 +54,8 @@ class ActionEditorSheet : BottomSheetDialogFragment() {
     private var genericInputsContainer: LinearLayout? = null
     private var editorActionsCard: MaterialCardView? = null
     private var editorActionsContainer: LinearLayout? = null
+    private var triggerConstraintsCard: MaterialCardView? = null
+    private var triggerConstraintsContainer: LinearLayout? = null
 
     // 异常处理 UI 组件
     private var errorSettingsContent: LinearLayout? = null
@@ -83,6 +93,9 @@ class ActionEditorSheet : BottomSheetDialogFragment() {
         existingStep = arguments?.getParcelableCompat("existingStep")
         focusedInputId = arguments?.getString("focusedInputId")
         allSteps = arguments?.getParcelableArrayListCompat("allSteps")
+        if (isTriggerModule()) {
+            constraintSteps.addAll(existingStep?.constraints.orEmpty())
+        }
 
         // 初始化参数，首先使用模块定义的默认值
         currentParameters.initializeDefaults(module.getInputs())
@@ -104,6 +117,7 @@ class ActionEditorSheet : BottomSheetDialogFragment() {
         val titleTextView = view.findViewById<TextView>(R.id.text_view_bottom_sheet_title)
         val infoButton = view.findViewById<ImageButton>(R.id.button_module_info)
         val saveButton = view.findViewById<Button>(R.id.button_save)
+        val testTriggerButton = view.findViewById<Button>(R.id.button_test_trigger)
 
         // 绑定视图容器
         customUiCard = view.findViewById(R.id.card_custom_ui)
@@ -112,6 +126,8 @@ class ActionEditorSheet : BottomSheetDialogFragment() {
         genericInputsContainer = view.findViewById(R.id.container_generic_inputs)
         editorActionsCard = view.findViewById(R.id.card_editor_actions)
         editorActionsContainer = view.findViewById(R.id.container_editor_actions)
+        triggerConstraintsCard = view.findViewById(R.id.card_trigger_constraints)
+        triggerConstraintsContainer = view.findViewById(R.id.container_trigger_constraints)
 
         // 绑定错误处理容器
         errorSettingsContent = view.findViewById(R.id.container_execution_settings_content)
@@ -138,7 +154,12 @@ class ActionEditorSheet : BottomSheetDialogFragment() {
         }
 
         buildUi()
+        renderTriggerConstraintsSection()
         buildErrorHandlingUi() // 构建错误处理 UI
+        testTriggerButton.isVisible = module.id.startsWith("vflow.trigger.")
+        testTriggerButton.setOnClickListener {
+            diagnoseCurrentTrigger()
+        }
 
         saveButton.setOnClickListener {
             readParametersFromUi()
@@ -147,16 +168,217 @@ class ActionEditorSheet : BottomSheetDialogFragment() {
             val finalParams = existingStep?.parameters?.toMutableMap() ?: mutableMapOf()
             finalParams.putAll(currentParameters.snapshot())
             val stepForValidation = ActionStep(moduleId = module.id, parameters = finalParams, id = existingStep?.id ?: "")
+                .withConstraints(currentConstraintStepsForSave())
             // 调用 validate 方法进行验证
             val validationResult = module.validate(stepForValidation, allSteps ?: emptyList())
             if (validationResult.isValid) {
-                onSave?.invoke(currentParameters.toActionStep(module.id))
+                onSave?.invoke(
+                    currentParameters.toActionStep(module.id, existingStep?.id ?: "")
+                        .withConstraints(currentConstraintStepsForSave())
+                )
                 dismiss()
             } else {
                 Toast.makeText(context, validationResult.errorMessage, Toast.LENGTH_LONG).show()
             }
         }
         return view
+    }
+
+    private fun isTriggerModule(): Boolean {
+        return module.metadata.getResolvedCategoryId() == ModuleCategories.TRIGGER ||
+            module.id.startsWith("vflow.trigger.")
+    }
+
+    private fun currentConstraintStepsForSave(): List<ActionStep> {
+        return if (isTriggerModule()) constraintSteps.toList() else emptyList()
+    }
+
+    private fun renderTriggerConstraintsSection() {
+        val card = triggerConstraintsCard ?: return
+        val container = triggerConstraintsContainer ?: return
+        card.isVisible = isTriggerModule()
+        if (!isTriggerModule()) return
+
+        val context = requireContext()
+        val density = resources.displayMetrics.density
+        container.removeAllViews()
+
+        val header = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        val textColumn = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        }
+        textColumn.addView(TextView(context).apply {
+            text = getString(R.string.trigger_constraints_title)
+            setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_TitleMedium)
+            setTypeface(null, android.graphics.Typeface.BOLD)
+        })
+        textColumn.addView(TextView(context).apply {
+            text = TriggerConstraintUiFormatter.countText(
+                count = constraintSteps.size,
+                emptyText = getString(R.string.trigger_constraints_empty),
+                countText = { getString(R.string.trigger_constraints_count, it) }
+            )
+            setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodyMedium)
+            setTextColor(MaterialColors.getColor(this, com.google.android.material.R.attr.colorOnSurfaceVariant))
+        })
+        header.addView(textColumn)
+        header.addView(MaterialButton(context, null, com.google.android.material.R.attr.materialButtonOutlinedStyle).apply {
+            text = getString(R.string.trigger_constraints_add)
+            icon = ContextCompat.getDrawable(context, R.drawable.rounded_add_24)
+            setOnClickListener { showConstraintPicker() }
+        })
+        container.addView(header)
+
+        constraintSteps.forEachIndexed { index, step ->
+            container.addView(createConstraintRow(index, step), LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                topMargin = (12 * density).toInt()
+            })
+        }
+    }
+
+    private fun createConstraintRow(index: Int, step: ActionStep): View {
+        val context = requireContext()
+        val density = resources.displayMetrics.density
+        val module = ModuleRegistry.getModule(step.moduleId)
+        val moduleName = module?.metadata?.getLocalizedName(context) ?: step.moduleId
+        val moduleSummary = module?.getSummary(context, step)?.takeIf { it.isNotBlank() }
+        val stateSuffix = if (step.isDisabled) " · ${getString(R.string.trigger_constraints_disabled_suffix)}" else ""
+
+        return LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            background = context.obtainStyledAttributes(intArrayOf(android.R.attr.selectableItemBackground)).use {
+                it.getDrawable(0)
+            }
+            setPadding(
+                (12 * density).toInt(),
+                (10 * density).toInt(),
+                (4 * density).toInt(),
+                (10 * density).toInt()
+            )
+
+            val textColumn = LinearLayout(context).apply {
+                orientation = LinearLayout.VERTICAL
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            }
+            textColumn.addView(TextView(context).apply {
+                text = moduleName
+                setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodyLarge)
+                setTypeface(null, android.graphics.Typeface.BOLD)
+            })
+            textColumn.addView(TextView(context).apply {
+                text = (moduleSummary ?: moduleName).toString() + stateSuffix
+                setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodySmall)
+                setTextColor(MaterialColors.getColor(this, com.google.android.material.R.attr.colorOnSurfaceVariant))
+                maxLines = 2
+                ellipsize = android.text.TextUtils.TruncateAt.END
+            })
+
+            val enabledSwitch = MaterialSwitch(context).apply {
+                isChecked = !step.isDisabled
+                setOnCheckedChangeListener { _, isChecked ->
+                    constraintSteps[index] = constraintSteps[index].copy(isDisabled = !isChecked)
+                    renderTriggerConstraintsSection()
+                }
+            }
+            val deleteButton = ImageButton(context).apply {
+                setImageResource(R.drawable.rounded_delete_24)
+                background = context.obtainStyledAttributes(intArrayOf(android.R.attr.selectableItemBackgroundBorderless)).use {
+                    it.getDrawable(0)
+                }
+                contentDescription = getString(R.string.common_delete)
+                setOnClickListener { confirmDeleteConstraint(index, moduleName) }
+            }
+
+            addView(textColumn)
+            addView(enabledSwitch)
+            addView(deleteButton, LinearLayout.LayoutParams(
+                (40 * density).toInt(),
+                (40 * density).toInt()
+            ))
+            setOnClickListener { editConstraint(index, module, step) }
+        }
+    }
+
+    private fun showConstraintPicker() {
+        readParametersFromUi()
+        val picker = ActionPickerSheet().apply {
+            arguments = Bundle().apply {
+                putString(ActionPickerSheet.ARG_PICKER_MODE, ActionPickerSheet.MODE_CONSTRAINT)
+            }
+            onActionSelected = { selectedModule ->
+                editConstraint(index = -1, module = selectedModule, step = null)
+            }
+        }
+        picker.show(childFragmentManager, "ConstraintPicker")
+    }
+
+    private fun editConstraint(index: Int, module: ActionModule?, step: ActionStep?) {
+        val targetModule = module ?: ModuleRegistry.getModule(step?.moduleId ?: return) ?: return
+        val editor = newInstance(targetModule, step, null, allSteps).apply {
+            onSave = { savedStep ->
+                val normalizedStep = savedStep.withConstraints(emptyList())
+                if (index >= 0) {
+                    constraintSteps[index] = normalizedStep
+                } else {
+                    constraintSteps.add(normalizedStep)
+                }
+                renderTriggerConstraintsSection()
+            }
+            onMagicVariableRequested = { _, _ -> }
+            onStartActivityForResult = this@ActionEditorSheet.onStartActivityForResult
+            setOnPickerRequestedListener { inputDef ->
+                this@ActionEditorSheet.dispatchPickerRequest(inputDef)
+            }
+        }
+        editor.show(childFragmentManager, "ConstraintEditor")
+    }
+
+    private fun confirmDeleteConstraint(index: Int, moduleName: String) {
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(R.string.trigger_constraints_delete_title)
+            .setMessage(getString(R.string.trigger_constraints_delete_message, moduleName))
+            .setNegativeButton(R.string.common_cancel, null)
+            .setPositiveButton(R.string.common_delete) { _, _ ->
+                if (index in constraintSteps.indices) {
+                    constraintSteps.removeAt(index)
+                    renderTriggerConstraintsSection()
+                }
+            }
+            .show()
+    }
+
+    private fun diagnoseCurrentTrigger() {
+        readParametersFromUi()
+        syncExecutionSettingsFromUi()
+        val finalParams = existingStep?.parameters?.toMutableMap() ?: mutableMapOf()
+        finalParams.putAll(currentParameters.snapshot())
+        val stepForDiagnostic = ActionStep(
+            moduleId = module.id,
+            parameters = finalParams,
+            id = existingStep?.id ?: ""
+        )
+        viewLifecycleOwner.lifecycleScope.launch {
+            val result = TriggerDiagnosticRunner.diagnose(
+                context = requireContext(),
+                module = module,
+                step = stepForDiagnostic,
+                allSteps = allSteps ?: emptyList()
+            )
+            if (!isAdded) return@launch
+            MaterialAlertDialogBuilder(requireContext())
+                .setTitle(result.title)
+                .setMessage(result.message)
+                .setPositiveButton(R.string.common_ok, null)
+                .show()
+        }
     }
 
     /**

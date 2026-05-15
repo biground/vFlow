@@ -3,6 +3,7 @@
 package com.chaomixian.vflow.core.workflow.model
 
 import android.os.Parcelable
+import com.google.gson.annotations.SerializedName
 import kotlinx.parcelize.Parcelize
 import kotlinx.parcelize.RawValue
 import java.util.UUID
@@ -12,11 +13,19 @@ data class ActionStep(
     val moduleId: String,
     // 为 parameters 添加 @RawValue 注解，以解决 Parcelize 无法处理 Any? 类型的编译错误。
     val parameters: @RawValue Map<String, Any?>,
+    @SerializedName("constraints")
+    private val storedConstraints: @RawValue List<ActionStep>? = emptyList(),
     val isDisabled: Boolean = false,
     var indentationLevel: Int = 0,
     // ID对于稳定的列表操作至关重要
     val id: String = UUID.randomUUID().toString()
 ) : Parcelable {
+    val constraints: List<ActionStep>
+        get() = storedConstraints.orEmpty()
+
+    fun withConstraints(constraints: List<ActionStep>): ActionStep {
+        return copy(storedConstraints = constraints)
+    }
 
     // 重写 equals 和 hashCode，让它们只依赖于唯一的 `id`。
     // 这可以防止不稳定的 `parameters` map 在集合操作（如 DiffUtil）中导致问题。

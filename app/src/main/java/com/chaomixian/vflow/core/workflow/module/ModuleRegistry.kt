@@ -17,6 +17,7 @@ import com.chaomixian.vflow.core.workflow.module.snippet.*
 import com.chaomixian.vflow.core.workflow.module.ui.blocks.*
 import com.chaomixian.vflow.core.workflow.module.ui.components.*
 import com.chaomixian.vflow.core.workflow.module.core.*
+import com.chaomixian.vflow.core.workflow.module.constraints.*
 
 object ModuleRegistry {
     private val modules = mutableMapOf<String, ActionModule>()
@@ -87,6 +88,14 @@ object ModuleRegistry {
         register(LocationTriggerModule(), context)
         register(PoseTriggerModule(), context)
         register(VoiceTriggerModule(), context)
+
+        // 约束
+        register(TimeRangeConstraintModule(), context)
+        register(WeekdayConstraintModule(), context)
+        register(GlobalVariableConstraintModule(), context)
+        register(ChargingStateConstraintModule(), context)
+        register(ScreenStateConstraintModule(), context)
+        register(NetworkStateConstraintModule(), context)
 
         // 界面交互
         register(FindTextModule(), context)
