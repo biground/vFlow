@@ -16,6 +16,10 @@ import kotlin.math.sqrt
 
 object TriggerDiagnosticRunner {
 
+    fun supportsCompleteDiagnostic(moduleId: String): Boolean {
+        return moduleId == LocationTriggerModule().id
+    }
+
     suspend fun diagnose(
         context: Context,
         module: ActionModule,
@@ -43,7 +47,7 @@ object TriggerDiagnosticRunner {
             )
         }
 
-        return if (step.moduleId == LocationTriggerModule().id) {
+        return if (supportsCompleteDiagnostic(step.moduleId)) {
             diagnoseLocationRuntime(context, step)
         } else {
             TriggerDiagnosticResult(

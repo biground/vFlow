@@ -156,7 +156,7 @@ class ActionEditorSheet : BottomSheetDialogFragment() {
         buildUi()
         renderTriggerConstraintsSection()
         buildErrorHandlingUi() // 构建错误处理 UI
-        testTriggerButton.isVisible = module.id.startsWith("vflow.trigger.")
+        testTriggerButton.isVisible = TriggerDiagnosticRunner.supportsCompleteDiagnostic(module.id)
         testTriggerButton.setOnClickListener {
             diagnoseCurrentTrigger()
         }

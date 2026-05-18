@@ -9,6 +9,12 @@ import org.junit.Test
 class TriggerDiagnosticRunnerTest {
 
     @Test
+    fun `only triggers with complete diagnostics should expose test entry`() {
+        assertTrue(TriggerDiagnosticRunner.supportsCompleteDiagnostic(LocationTriggerModule().id))
+        assertEquals(false, TriggerDiagnosticRunner.supportsCompleteDiagnostic("vflow.trigger.battery"))
+    }
+
+    @Test
     fun `location config rejects out of range coordinates and radius`() {
         val badLatitude = locationStep(latitude = 91.0)
         val badLongitude = locationStep(longitude = 181.0)
